@@ -42,6 +42,11 @@
               "id": "b3",
               "html": "<p>The dockmaster looked her over once and returned to his ledger. “If you’re waiting for someone,” he said, “they’re not coming. Nobody meets the evening boat.”</p>"
             }
+          ],
+          "references": [
+            "wren",
+            "the-letter",
+            "the-bell"
           ]
         },
         {
@@ -102,6 +107,9 @@
                 }
               ]
             }
+          ],
+          "references": [
+            "the-letter"
           ]
         },
         {
@@ -136,6 +144,13 @@
               "id": "b11",
               "html": "<p>It was not hard. The whole town seemed to lean toward it: every lane bent uphill, every roof sloped the same way, as if the place had been built by people who wanted to be sure they could always find their way to the top of the cliff. The lighthouse stood there, white and windowless, and the sound came from inside it.</p>"
             }
+          ],
+          "references": [
+            "wren",
+            "the-bell",
+            "the-letter",
+            "the-writer",
+            "the-lighthouse"
           ]
         }
       ]
@@ -185,6 +200,10 @@
                 }
               ]
             }
+          ],
+          "references": [
+            "the-keeper",
+            "wren"
           ]
         },
         {
@@ -224,7 +243,96 @@
                 "effect": "fade"
               }
             }
+          ],
+          "references": [
+            "the-bell"
           ]
+        }
+      ]
+    }
+  ],
+  "references": [
+    {
+      "id": "wren",
+      "sections": [
+        {
+          "from": "the-harbour",
+          "title": "Wren",
+          "html": "<p>Arrived on the evening ferry with a single bag and an old letter, and nowhere to sleep.</p>"
+        },
+        {
+          "from": "the-keeper",
+          "mode": "append",
+          "html": "<p>The keeper seems to know who she is, or thinks he does. He calls her “the daughter”.</p>"
+        }
+      ]
+    },
+    {
+      "id": "the-letter",
+      "sections": [
+        {
+          "from": "the-harbour",
+          "title": "The Letter",
+          "html": "<p>Folded into Wren’s coat. It asks her to come home, and doesn’t say why.</p>"
+        },
+        {
+          "from": "the-keeper",
+          "mode": "append",
+          "html": "<p>Eleven years old. Its writer has been dead for nine of them.</p>"
+        }
+      ]
+    },
+    {
+      "id": "the-bell",
+      "sections": [
+        {
+          "from": "the-harbour",
+          "title": "The Bell",
+          "html": "<p>Rings from somewhere above the town, slow and uneven. The count is never the same twice.</p>"
+        },
+        {
+          "from": "the-keeper",
+          "title": "The Lighthouse Bell",
+          "html": "<p>Hangs at the top of the lighthouse, in the place where the lamp should be.</p>"
+        }
+      ]
+    },
+    {
+      "id": "the-writer",
+      "sections": [
+        {
+          "from": "the-harbour",
+          "title": "The Letter Writer",
+          "html": "<p>Wrote the letter that brought Wren back. Wren knows the handwriting better than her own.</p>"
+        },
+        {
+          "from": "the-keeper",
+          "title": "Wren’s Mother",
+          "html": "<p>The woman who wrote the letter. The keeper’s question suggests Wren was not her only daughter.</p>"
+        }
+      ]
+    },
+    {
+      "id": "the-lighthouse",
+      "sections": [
+        {
+          "from": "the-harbour",
+          "title": "The Lighthouse",
+          "html": "<p>White and windowless, at the top of the cliff. The whole town seems to lean toward it.</p>",
+          "image": {
+            "src": "images/lighthouse.svg",
+            "alt": "A white lighthouse with a red roof on a grey shore"
+          }
+        }
+      ]
+    },
+    {
+      "id": "the-keeper",
+      "sections": [
+        {
+          "from": "the-keeper",
+          "title": "The Keeper",
+          "html": "<p>Keeps the lighthouse. Younger than Wren expected, with ink on his fingers and a face that gives nothing away.</p>"
         }
       ]
     }

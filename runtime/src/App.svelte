@@ -85,6 +85,8 @@
   <Reader
     {bundle}
     initial={screen.initial}
+    furthestChapter={Math.max(0, bundle.chapters.findIndex((c) => c.id === save?.furthest_chapter_id))}
+    assetUrl={(src) => new URL(src, bundleUrl).href}
     onpositionchange={(position) => savePosition(bundle, position)}
     onchange={(reader, change) => director?.update(reader, change)}
     onexit={() => exit(bundle)}

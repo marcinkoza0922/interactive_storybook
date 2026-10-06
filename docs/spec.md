@@ -209,6 +209,8 @@ match = ["Elara", "the Witch of Varn"]      # aliases auto-detected in the text
 - The page text stays **clean** — no inline links or underlines.
 - A **collapsible sidebar** lists every reference matched on the current page; selecting one shows its current (gated) entry.
 - Matching is automatic from aliases (whole-word, case-sensitive by default), with `:ref` / `:noref` for exceptions.
+- Matching happens in the **compiler**: each page in the bundle lists the IDs of references it mentions, in order of first mention. Aliases added by a section match only in text from that section's chapter onward. The runtime only applies gating and displays the result.
+- On narrow viewports the sidebar overlays the page; tapping outside it closes it rather than turning the page. Esc closes the sidebar before it opens the menu. An open entry stays open across page turns; closing the sidebar returns it to the page's list.
 
 ---
 

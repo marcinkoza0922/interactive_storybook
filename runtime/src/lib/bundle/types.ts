@@ -9,6 +9,7 @@ export interface Bundle {
   book: BookMeta
   audio?: AudioConfig
   chapters: Chapter[]
+  references?: Reference[]
 }
 
 export interface AudioConfig {
@@ -37,6 +38,11 @@ export interface Chapter {
 
 export interface Page {
   blocks: Block[]
+  /**
+   * IDs of references mentioned on this page, in order of first mention. Matching names and
+   * aliases against the text (and gating aliases by chapter) is the compiler's job.
+   */
+  references?: string[]
 }
 
 export interface Block {
@@ -66,3 +72,27 @@ export type Cue =
   | { kind: 'ambient'; id: string; src: string; volume?: number; fade_ms?: number; delay_ms?: number }
   | { kind: 'ambient_stop'; id: string; fade_ms?: number; delay_ms?: number }
   | { kind: 'sfx'; src: string; volume?: number; delay_ms?: number }
+
+export interface Reference {
+  id: string
+  /** In chapter order. The reference is hidden until its first section unlocks. */
+  sections: ReferenceSection[]
+}
+
+export interface ReferenceSection {
+  /** Chapter ID from which this section is visible (once the reader has reached it). */
+  from: string
+  /** `replace` (default) supersedes earlier sections; `append` adds to them. */
+  mode?: 'replace' | 'append'
+  /** The displayed name from this section on. Gated like the text, so names can't leak. */
+  title?: string
+  /** Rendered HTML. */
+  html: string
+  image?: ImageRef
+}
+
+export interface ImageRef {
+  /** Relative to the bundle's book.json. */
+  src: string
+  alt: string
+}

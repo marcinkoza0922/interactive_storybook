@@ -10,6 +10,7 @@
   --tome-accent: #8a3b2e;
   --tome-accent-contrast: #fdf8f0;
   --tome-rule: #d9cfbe;
+  --tome-sidebar-bg: #efe8da;
 
   /* Typography */
   --tome-font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
@@ -22,6 +23,7 @@
   /* Layout */
   --tome-page-max-width: 36rem;
   --tome-page-padding: clamp(1.5rem, 6vw, 4rem);
+  --tome-sidebar-width: 20rem;
 
   /* Motion */
   --tome-reveal-duration: 700ms;
