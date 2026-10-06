@@ -11,6 +11,7 @@
   --tome-accent-contrast: #fdf8f0;
   --tome-rule: #d9cfbe;
   --tome-sidebar-bg: #efe8da;
+  --tome-illustration-bg: #e9e2d4;
 
   /* Typography */
   --tome-font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
@@ -28,4 +29,6 @@
   /* Motion */
   --tome-reveal-duration: 700ms;
   --tome-reveal-easing: ease-out;
+  --tome-illustration-fade: 900ms;
+  --tome-page-fade: 900ms;
 }

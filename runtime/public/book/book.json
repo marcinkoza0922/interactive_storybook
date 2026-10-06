@@ -9,6 +9,9 @@
   "audio": {
     "restore_delay_ms": 3000
   },
+  "illustrations": {
+    "linger_ms": 3000
+  },
   "chapters": [
     {
       "id": "the-harbour",
@@ -16,6 +19,10 @@
       "content_hash": "dev-the-harbour-1",
       "pages": [
         {
+          "illustration": {
+            "src": "images/plate-harbour.svg",
+            "alt": "A small ferry coming into a grey harbour below a hillside town"
+          },
           "blocks": [
             {
               "id": "b1",
@@ -50,6 +57,10 @@
           ]
         },
         {
+          "illustration": {
+            "src": "images/plate-candle.svg",
+            "alt": "A single lit candle on a bare table, a folded note beside it"
+          },
           "blocks": [
             {
               "id": "b4",
@@ -137,6 +148,10 @@
               "html": "<p>Near dawn she took the letter out and read it again. It was eleven years old. It asked her to come home. It did not say why, and the woman who had written it had been dead for nine of those eleven years.</p>"
             },
             {
+              "id": "b9-letter",
+              "html": "<figure><img src=\"images/inline-letter.svg\" alt=\"The old letter, its handwriting faded\" width=\"400\" height=\"220\"><figcaption>The letter</figcaption></figure>"
+            },
+            {
               "id": "b10",
               "html": "<p>When the light came grey through the gaps in the shutters she went out to find the bell.</p>"
             },
@@ -159,8 +174,13 @@
       "id": "the-keeper",
       "title": "The Keeper",
       "content_hash": "dev-the-keeper-1",
+      "header_image": {
+        "src": "images/ornament.svg",
+        "alt": ""
+      },
       "pages": [
         {
+          "illustration": null,
           "blocks": [
             {
               "id": "b12",
@@ -207,6 +227,10 @@
           ]
         },
         {
+          "illustration": {
+            "src": "images/plate-bell.svg",
+            "alt": "A bronze bell hanging in the dark above an empty chair"
+          },
           "blocks": [
             {
               "id": "b16",

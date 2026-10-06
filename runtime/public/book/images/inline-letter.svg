@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 220">
+  <rect x="40" y="20" width="320" height="180" fill="#efe6d2" stroke="#b9ab8f" stroke-width="2" transform="rotate(-3 200 110)"/>
+  <g stroke="#6a5d4c" stroke-width="2" fill="none" transform="rotate(-3 200 110)">
+    <path d="M80 70 q20 -12 40 0 t40 0 t40 0 t40 0"/>
+    <path d="M80 105 q20 -12 40 0 t40 0 t40 0 t40 0 t30 0"/>
+    <path d="M80 140 q20 -12 40 0 t40 0 t30 0"/>
+  </g>
+</svg>

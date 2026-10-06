@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 800">
+  <rect width="600" height="800" fill="#2b2620"/>
+  <radialGradient id="glow" cx="50%" cy="45%" r="45%">
+    <stop offset="0" stop-color="#f3d58a" stop-opacity="0.55"/>
+    <stop offset="1" stop-color="#2b2620" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="600" height="800" fill="url(#glow)"/>
+  <rect x="80" y="520" width="440" height="24" fill="#5b4632"/>
+  <rect x="270" y="380" width="60" height="140" fill="#efe6d2"/>
+  <path d="M300 300 C285 330 285 360 300 375 C315 360 315 330 300 300Z" fill="#f6c453"/>
+  <path d="M300 330 C294 345 294 360 300 368 C306 360 306 345 300 330Z" fill="#fff4cf"/>
+  <path d="M360 505 L470 495 L475 515 L365 522Z" fill="#e8dcc0"/>
+  <text x="300" y="740" text-anchor="middle" font-family="Georgia, serif" font-size="26" fill="#e8dcc0">Freshly lit</text>
+</svg>

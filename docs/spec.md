@@ -84,6 +84,7 @@ The CLI emits a versioned bundle consumed by the runtime:
 
 - `book.json` — metadata, chapters (each with a stable ID and content hash), pages, blocks, reveal steps, cues, references, theme and per-page precomputed audio state.
 - `assets/` — content-hashed images, audio, video, fonts, custom CSS.
+- All asset paths in the bundle, including URLs inside block and reference HTML, are relative to `book.json`.
 - A `bundle_schema_version` field; the runtime refuses bundles with an incompatible major version, with a clear message.
 
 ---
@@ -258,10 +259,12 @@ Three kinds:
 
 ### 7.1 Illustration track
 
-- `::illustration` sets the current track image; it persists across pages until changed.
+- `::illustration` sets the current track image; it persists across pages and chapters until changed. The author can also clear the track (e.g. `::illustration{none}`), returning to a single text column.
 - **Wide viewport:** shown side-by-side with the text as a two-page spread.
 - **Narrow viewport** (mobile or a small window): the reader toggles between text and image. When moving forward onto a page that introduces a new track illustration, the app **lingers on the image** for a few seconds (author-configurable default) before fading in the text. The advance action skips the linger.
-- Layout is decided by **viewport size/aspect ratio**, never by device type.
+- Layout is decided by **viewport size/aspect ratio**, never by device type. The runtime exposes the current layout as `data-layout="spread" | "single"` for themes and custom CSS.
+- While the illustration is showing on a narrow viewport (lingering, or toggled with the Illustration button / `I`), the advance action returns to the text rather than revealing a step or turning the page.
+- Audio cues on a page fire on arrival, even while its illustration lingers; the linger is not a reveal step.
 
 ### 7.2 Accessibility
 

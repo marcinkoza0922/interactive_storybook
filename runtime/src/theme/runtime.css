@@ -92,11 +92,94 @@ body {
   min-height: 0;
 }
 
-.tome-reading-main {
+.tome-text-column {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 0;
+}
+
+/* While the narrow layout shows the illustration, the column shrinks to its status bar. */
+.tome-text-column:has(> .tome-reader[hidden]) {
+  flex: none;
+}
+
+/*
+ * The stage holds the text and, when present, the illustration track. The reader sets
+ * data-layout: "spread" puts the illustration on a facing page; "single" shows one at a time.
+ */
+.tome-stage {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+[data-layout='spread'] .tome-stage {
+  flex-direction: row;
+}
+
+.tome-illustration {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  margin: 0;
+  padding: clamp(1rem, 3vw, 2.5rem);
+  background: var(--tome-illustration-bg);
+}
+
+[data-layout='spread'] .tome-illustration {
+  flex: 1 1 50%;
+  border-inline-end: 1px solid var(--tome-rule);
+}
+
+.tome-illustration-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  animation: tome-fade-in var(--tome-illustration-fade) ease-out both;
+}
+
+[data-layout='spread'] .tome-text-column {
+  flex: 1 1 50%;
+}
+
+.tome-reader[hidden] {
+  display: none;
+}
+
+.tome-page-fade-in {
+  animation: tome-fade-in var(--tome-page-fade) ease-out both;
+}
+
+.tome-chapter-image {
+  display: block;
+  max-width: 100%;
+  max-height: 12rem;
+  margin: 1rem auto 0;
+}
+
+/* Inline illustrations within the text flow. */
+.tome-block :where(img) {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem auto;
+}
+
+.tome-block :where(figure) {
+  margin: 0;
+}
+
+.tome-block :where(figcaption) {
+  margin-block-start: -0.75rem;
+  color: var(--tome-text-muted);
+  font-size: 0.85em;
+  text-align: center;
 }
 
 /* Reader: the page scrolls when its content doesn't fit the viewport. */
@@ -150,9 +233,16 @@ body {
 
 /* Near-instant rather than none, so animationend still fires and advancing stays one press per step. */
 @media (prefers-reduced-motion: reduce) {
-  .tome-entering {
+  .tome-entering,
+  .tome-page-fade-in,
+  .tome-illustration-image {
     animation-duration: 1ms !important;
   }
+}
+
+.tome-status-actions {
+  display: flex;
+  gap: 0.25rem;
 }
 
 .tome-status {

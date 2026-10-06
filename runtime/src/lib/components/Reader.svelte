@@ -1,7 +1,8 @@
 <script lang="ts">
-  import { tick, untrack } from 'svelte'
-  import { SvelteSet } from 'svelte/reactivity'
+  import { onDestroy, tick, untrack } from 'svelte'
+  import { MediaQuery, SvelteSet } from 'svelte/reactivity'
   import type { Bundle } from '../bundle/types'
+  import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
   import { advance, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
   import PageView from './PageView.svelte'
@@ -30,10 +31,56 @@
   let panelOpen = $state(false)
   let selectedReference = $state<string | null>(null)
 
+  /** Wide, landscape viewports show the illustration track as a facing page. */
+  const wide = new MediaQuery('(min-width: 60rem) and (min-aspect-ratio: 5/4)')
+  const track = trackStates(untrack(() => bundle))
+  /** On narrow viewports the reader sees either the text or the track illustration. */
+  let narrowView = $state<'text' | 'illustration'>('text')
+  /** The text is fading in after the illustration lingered. */
+  let textFadingIn = $state(false)
+  let lingerTimer: ReturnType<typeof setTimeout> | undefined
+
   const chapter = $derived(bundle.chapters[reader.position.chapter])
   const page = $derived(pageAt(bundle, reader.position))
+  const illustration = $derived(track[reader.position.chapter][reader.position.page])
+  const layout = $derived(illustration && wide.current ? 'spread' : 'single')
+  const showingIllustration = $derived(illustration !== null && !wide.current && narrowView === 'illustration')
   const references = $derived(pageReferences(bundle, page, furthestChapter))
   const selected = $derived(selectedReference ? referenceEntry(bundle, selectedReference, furthestChapter) : null)
+
+  /**
+   * Arriving forward on a page that introduces a new track illustration lingers on it
+   * (on narrow viewports) before fading in the text. Going back shows the text at once.
+   */
+  function arrive(state: ReaderState) {
+    clearTimeout(lingerTimer)
+    textFadingIn = false
+    if (!wide.current && state.direction === 'forward' && introducesIllustration(track, state.position)) {
+      narrowView = 'illustration'
+      lingerTimer = setTimeout(showText, bundle.illustrations?.linger_ms ?? DEFAULT_LINGER_MS)
+    } else {
+      narrowView = 'text'
+    }
+  }
+
+  function showText() {
+    clearTimeout(lingerTimer)
+    if (narrowView === 'text') return
+    narrowView = 'text'
+    textFadingIn = true
+  }
+
+  function toggleIllustration() {
+    if (narrowView === 'text') {
+      clearTimeout(lingerTimer)
+      narrowView = 'illustration'
+    } else {
+      showText()
+    }
+  }
+
+  arrive(untrack(() => initial))
+  onDestroy(() => clearTimeout(lingerTimer))
 
   async function go(next: ReaderState | null) {
     if (!next) return
@@ -45,6 +92,7 @@
     onchange(next, turned ? 'turn' : 'reveal')
 
     if (turned) {
+      arrive(next)
       onpositionchange(next.position)
       scroller.scrollTop = 0
       return
@@ -61,6 +109,11 @@
   }
 
   function onAdvance() {
+    // Advancing from the illustration (lingering or toggled) returns to the text.
+    if (showingIllustration) {
+      showText()
+      return
+    }
     // Advancing while an animation runs completes it instead of moving on.
     if (entering.size > 0) {
       entering.clear()
@@ -110,6 +163,10 @@
       case 'R':
         setPanelOpen(!panelOpen)
         break
+      case 'i':
+      case 'I':
+        if (illustration && !wide.current) toggleIllustration()
+        break
       case 'Escape':
         if (panelOpen) setPanelOpen(false)
         else onexit()
@@ -122,7 +179,7 @@
 
   /** Click or tap: the left third goes back, the rest advances. */
   function onclick(event: MouseEvent) {
-    if ((event.target as Element).closest('a, button')) return
+    if ((event.target as Element).closest('a, button, .tome-status')) return
     // Don't turn the page when the reader is selecting text.
     if (!window.getSelection()?.isCollapsed) return
     // Where the sidebar overlays the page, a tap outside it dismisses it rather than turning the page.
@@ -139,33 +196,53 @@
 
 <svelte:window {onkeydown} />
 
-<div class="tome-reading">
-  <div class="tome-reading-main">
-    <!-- Keyboard input is handled at the window level; clicking is a pointer convenience. -->
-    <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
-    <main class="tome-reader" bind:this={scroller} {onclick}>
-      <PageView
-        {page}
-        chapterTitle={reader.position.page === 0 ? chapter.title : null}
-        revealed={reader.revealed}
-        {entering}
-        onentered={(id) => entering.delete(id)}
-      />
-    </main>
+<div class="tome-reading" data-layout={layout}>
+  <!-- Keyboard input is handled at the window level; clicking is a pointer convenience. -->
+  <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
+  <div class="tome-stage" {onclick}>
+    {#if illustration && (layout === 'spread' || showingIllustration)}
+      <figure class="tome-illustration">
+        {#key illustration.src}
+          <img class="tome-illustration-image" src={assetUrl(illustration.src)} alt={illustration.alt} />
+        {/key}
+      </figure>
+    {/if}
 
-    <footer class="tome-status">
-      <span aria-live="polite">{chapter.title}</span>
-      <button
-        class="tome-link-button"
-        bind:this={panelToggle}
-        onclick={() => setPanelOpen(!panelOpen)}
-        aria-expanded={panelOpen}
-        aria-controls="tome-references"
-      >
-        References{references.length > 0 ? ` · ${references.length}` : ''}
-      </button>
-      <span>{reader.position.page + 1} / {chapter.pages.length}</span>
-    </footer>
+    <div class="tome-text-column">
+      <main class="tome-reader" bind:this={scroller} hidden={showingIllustration}>
+        <PageView
+          {page}
+          chapterTitle={reader.position.page === 0 ? chapter.title : null}
+          chapterImage={reader.position.page === 0 ? chapter.header_image : undefined}
+          fadeIn={textFadingIn}
+          revealed={reader.revealed}
+          {entering}
+          onentered={(id) => entering.delete(id)}
+          {assetUrl}
+        />
+      </main>
+
+      <footer class="tome-status">
+        <span aria-live="polite">{chapter.title}</span>
+        <span class="tome-status-actions">
+          {#if illustration && layout === 'single'}
+            <button class="tome-link-button" onclick={toggleIllustration}>
+              {showingIllustration ? 'Text' : 'Illustration'}
+            </button>
+          {/if}
+          <button
+            class="tome-link-button"
+            bind:this={panelToggle}
+            onclick={() => setPanelOpen(!panelOpen)}
+            aria-expanded={panelOpen}
+            aria-controls="tome-references"
+          >
+            References{references.length > 0 ? ` · ${references.length}` : ''}
+          </button>
+        </span>
+        <span>{reader.position.page + 1} / {chapter.pages.length}</span>
+      </footer>
+    </div>
   </div>
 
   {#if panelOpen}

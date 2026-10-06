@@ -8,6 +8,7 @@ export interface Bundle {
   bundle_schema_version: number
   book: BookMeta
   audio?: AudioConfig
+  illustrations?: IllustrationConfig
   chapters: Chapter[]
   references?: Reference[]
 }
@@ -15,6 +16,11 @@ export interface Bundle {
 export interface AudioConfig {
   /** Delay before restoring a page's music and ambience after navigating back to it. */
   restore_delay_ms?: number
+}
+
+export interface IllustrationConfig {
+  /** On narrow screens, how long a newly introduced track illustration shows before the text. */
+  linger_ms?: number
 }
 
 export interface BookMeta {
@@ -32,12 +38,19 @@ export interface Chapter {
   title: string
   /** Changes whenever the chapter's content changes; invalidates saved page positions. */
   content_hash: string
+  /** Art shown above the chapter title. */
+  header_image?: ImageRef
   /** Pre-paginated by the compiler. Never empty. */
   pages: Page[]
 }
 
 export interface Page {
   blocks: Block[]
+  /**
+   * Sets the illustration track from this page on: an image, or null to clear it.
+   * Absent: the previous page's track illustration carries over.
+   */
+  illustration?: ImageRef | null
   /**
    * IDs of references mentioned on this page, in order of first mention. Matching names and
    * aliases against the text (and gating aliases by chapter) is the compiler's job.
