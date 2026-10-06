@@ -106,7 +106,17 @@ export type Cue =
   | { kind: 'ambient_stop'; id: string; fade_ms?: number; delay_ms?: number }
   | { kind: 'sfx'; src: string; volume?: number; delay_ms?: number }
   /** A line of narration: queued behind any line already playing on the page. */
-  | { kind: 'voice'; src: string; volume?: number; delay_ms?: number }
+  | {
+      kind: 'voice'
+      src: string
+      volume?: number
+      delay_ms?: number
+      /**
+       * When each word of the narrated paragraph (the block after the cue) starts, in ms;
+       * null for words after the narration ends, which are never highlighted.
+       */
+      words?: (number | null)[]
+    }
 
 export interface Reference {
   id: string

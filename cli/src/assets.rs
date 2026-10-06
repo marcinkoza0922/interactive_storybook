@@ -90,6 +90,11 @@ impl Assets {
         Ok(path)
     }
 
+    /// The file a reference points to in the project, without adding it to the bundle.
+    pub fn source(&self, reference: &str, from_file: &Path, kind: AssetKind) -> Result<PathBuf, String> {
+        self.locate(reference, from_file, kind)
+    }
+
     fn locate(&self, reference: &str, from_file: &Path, kind: AssetKind) -> Result<PathBuf, String> {
         let reference = reference.trim();
         if reference.is_empty() {

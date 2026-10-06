@@ -3,7 +3,8 @@
   import { MediaQuery, SvelteSet } from 'svelte/reactivity'
   import type { Bundle } from '../bundle/types'
   import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
-  import { anchorSelection, highlightRanges, type HighlightAnchor } from '../highlights/anchor'
+  import type { NarrationProgress } from '../audio/director'
+  import { anchorSelection, highlightRanges, rangeIn, visibleTextRoot, type HighlightAnchor } from '../highlights/anchor'
   import { advance, arriveBackward, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
   import type { Progress } from '../state/progress.svelte'
@@ -20,13 +21,16 @@
     narrating: boolean
     /** The reader can hear narration: only then does turning the page ask to confirm. */
     narrationAudible: boolean
+    /** Where the narration being heard is, for highlighting what it reads. */
+    narrationProgress: () => NarrationProgress | null
     assetUrl: (src: string) => string
     /** Every navigation, including reveal steps; drives audio. */
     onchange: (reader: ReaderState, change: 'turn' | 'reveal') => void
     onexit: () => void
   }
 
-  let { bundle, initial, progress, narrating, narrationAudible, assetUrl, onchange, onexit }: Props = $props()
+  let { bundle, initial, progress, narrating, narrationAudible, narrationProgress, assetUrl, onchange, onexit }: Props =
+    $props()
   const narrationHeard = $derived(narrating && narrationAudible)
 
   let reader = $state(untrack(() => initial))
@@ -218,6 +222,65 @@
   })
   onDestroy(() => ('highlights' in CSS ? CSS.highlights.delete('tome-highlight') : undefined))
 
+  // Narration highlighting: while narration is heard, mark the paragraph it reads and, with
+  // word timings, the word being spoken. Words are painted with a CSS Custom Highlight, which
+  // leaves the DOM alone (per-character effects have already split the text).
+  let narratedBlock: Element | null = null
+  let litWord = -1
+  let wordRanges = new Map<string, Range[]>()
+
+  function clearNarrationMarks() {
+    narratedBlock?.removeAttribute('data-narrating')
+    narratedBlock = null
+    litWord = -1
+    if ('highlights' in CSS) CSS.highlights.delete('tome-narration')
+  }
+
+  function words(block: Element, id: string): Range[] {
+    let ranges = wordRanges.get(id)
+    if (!ranges) {
+      const root = visibleTextRoot(block)
+      const text = root.textContent ?? ''
+      ranges = [...text.matchAll(/\S+/g)].flatMap((m) => rangeIn(root, m.index, m.index + m[0].length) ?? [])
+      wordRanges.set(id, ranges)
+    }
+    return ranges
+  }
+
+  function paintNarration() {
+    const now = narrationProgress()
+    const block = now && scroller.querySelector(`[data-block-id="${CSS.escape(now.blockId)}"]`)
+    if (!now || !block) return clearNarrationMarks()
+    if (block !== narratedBlock) {
+      clearNarrationMarks()
+      narratedBlock = block
+      block.setAttribute('data-narrating', now.words ? 'words' : 'paragraph')
+    }
+    if (!now.words || !('highlights' in CSS)) return
+
+    let index = -1
+    while (index + 1 < now.words.length && (now.words[index + 1] ?? Infinity) <= now.ms) index++
+    if (index === litWord) return
+    litWord = index
+    const range = words(block, now.blockId)[index]
+    if (range) CSS.highlights.set('tome-narration', new Highlight(range))
+    else CSS.highlights.delete('tome-narration')
+  }
+
+  $effect(() => {
+    void page // a new page means new text to find
+    wordRanges = new Map()
+    if (!narrating || !narrationAudible || !progress.settings.narration_highlight) return clearNarrationMarks()
+    let frame = requestAnimationFrame(function tick() {
+      paintNarration()
+      frame = requestAnimationFrame(tick)
+    })
+    return () => {
+      cancelAnimationFrame(frame)
+      clearNarrationMarks()
+    }
+  })
+
   // Auto mode: advance on a fixed timer, restarted by anything that changes what's on screen.
   // Paused while the menu or references are open, and while narration is in progress, even
   // silently: a line's length is a good guide to how long its text takes to read.
@@ -391,6 +454,7 @@
         setPanelOpen(true)
       }}
       ontitle={onexit}
+      onreset={onexit}
     />
   {/if}
 

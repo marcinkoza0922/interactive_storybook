@@ -12,6 +12,7 @@ mod preview;
 mod references;
 mod scaffold;
 mod theme;
+mod timing;
 
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand, ValueEnum};

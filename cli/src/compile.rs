@@ -378,6 +378,39 @@ mod tests {
     }
 
     #[test]
+    fn aligns_narration_timing_to_the_paragraph_it_narrates() {
+        let dir = tempfile::tempdir().unwrap();
+        let write = |path: &str, text: &str| {
+            let path = dir.path().join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        };
+        write("book.toml", "title = \"T\"\nauthor = \"A\"\n");
+        write("assets/voice/greeting.ogg", "ogg");
+        write("assets/voice/greeting.vtt", "WEBVTT\n\n00:00.000 --> 00:01.000\nHello there\n\n00:01.500 --> 00:02.000\nfriend\n");
+        write("assets/voice/other.ogg", "ogg");
+        write("assets/voice/other.vtt", "WEBVTT\n\n00:00.000 --> 00:01.000\nSomething else entirely\n");
+        write("manuscript/01-one.md", "# One\n\n::voice{greeting}\n\"Hello there,\" she said. *Friend.*\n\n::voice{other}\nA different line.\n");
+
+        let compiled = compile(dir.path());
+        let words: Vec<_> = compiled.bundle.chapters[0].pages[0]
+            .blocks
+            .iter()
+            .flat_map(|b| &b.cues)
+            .map(|c| match c {
+                Cue::Voice { words, .. } => words.clone(),
+                _ => None,
+            })
+            .collect();
+        // "Hello"(5) "there,"(5) share the first second; "she said." aren't spoken, so they
+        // take "Friend."'s start and the highlight passes over them.
+        assert_eq!(words[0], Some(vec![Some(0), Some(500), Some(1500), Some(1500), Some(1500)]));
+        assert_eq!(words[1], None, "a timing for different text is dropped");
+        let messages: Vec<_> = compiled.diagnostics.items.iter().map(|d| d.message.as_str()).collect();
+        assert_eq!(messages, ["only 0% of the narration's timed words are in the paragraph after it"]);
+    }
+
+    #[test]
     fn expands_stopping_all_ambience_and_warns_about_stopping_silence() {
         let dir = tempfile::tempdir().unwrap();
         for file in ["assets/audio/rain.ogg", "assets/audio/wind.ogg"] {

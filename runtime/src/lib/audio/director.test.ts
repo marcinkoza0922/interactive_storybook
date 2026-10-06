@@ -263,6 +263,17 @@ describe('narration', () => {
     expect(engine.take(), 'BB and C never play').toEqual(['voice D'])
   })
 
+  it('reads the whole page from its first line when resuming it', () => {
+    // Resuming lands on the page fully revealed: A, then BB after its pause, then C.
+    director.update(arriveBackward(narrated, { chapter: 0, page: 0 }), 'enter')
+    expect(engine.take()).toEqual(['voice A'])
+    engine.end()
+    vi.advanceTimersByTime(500)
+    expect(engine.take()).toEqual(['voice BB'])
+    engine.end()
+    expect(engine.take()).toEqual(['voice C'])
+  })
+
   it('plays nothing going back, and stops narration there', () => {
     director.update(start, 'enter')
     step(page2, 'turn')
@@ -296,6 +307,45 @@ describe('narration', () => {
     expect(director.narrating, 'D is passing silently').toBe(true)
     await vi.advanceTimersByTimeAsync(600)
     expect(director.narrating).toBe(false)
+  })
+})
+
+describe('narration progress', () => {
+  beforeEach(() => vi.useFakeTimers())
+  afterEach(() => vi.useRealTimers())
+
+  const book: Bundle = {
+    ...bundle,
+    chapters: [
+      {
+        id: 'one',
+        title: 'One',
+        content_hash: 'h',
+        pages: [
+          {
+            blocks: [
+              block('a', [{ kind: 'voice', src: 'A', words: [0, 400] }]),
+              block('b', [{ kind: 'voice', src: 'B', delay_ms: 300 }], 1),
+            ],
+          },
+        ],
+      },
+    ],
+  }
+
+  it('reports the paragraph and words of the line being heard, and nothing in between', () => {
+    const engine = new FakeEngine()
+    const director = new AudioDirector(book, engine)
+    director.update(start, 'enter')
+    director.update({ ...start, revealed: 1 }, 'reveal')
+    expect(director.narrationProgress()).toMatchObject({ blockId: 'a', words: [0, 400] })
+
+    engine.end()
+    expect(director.narrationProgress(), 'B is waiting out its delay').toBeNull()
+    vi.advanceTimersByTime(300)
+    expect(director.narrationProgress()).toMatchObject({ blockId: 'b', words: undefined })
+    engine.end()
+    expect(director.narrationProgress()).toBeNull()
   })
 })
 

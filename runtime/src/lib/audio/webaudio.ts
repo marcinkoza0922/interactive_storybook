@@ -1,25 +1,24 @@
 import type { AudioEngine, Channel, VoiceHandle } from './engine'
 import type { Voice } from './state'
 
-interface MusicVoice {
-  src: string
-  element: HTMLAudioElement
-  source: MediaElementAudioSourceNode
-  gain: GainNode
-}
-
-interface AmbientVoice {
+/** A looping track: the music, or one ambient layer. */
+interface Layer {
   src: string
   gain: GainNode
   node?: AudioBufferSourceNode
 }
 
+/** Decoded audio kept for reuse; least recently used is dropped first beyond this. */
+const CACHE_BUDGET_BYTES = 256 * 1024 * 1024
+
 /**
- * Web Audio implementation. Music streams through an <audio> element, since a long track
- * decoded into memory costs tens of megabytes. Ambient loops and sound effects are short,
- * so they are decoded buffers, which loop without gaps and start without latency.
+ * Web Audio implementation. Everything plays from decoded buffers through one audio graph,
+ * never from <audio> elements: browsers that block autoplay (Brave by default) refuse an
+ * element's play() without a click right before it, while a resumed audio context plays
+ * freely. Buffers also loop without gaps. Decoded music is large (a few minutes is tens of
+ * megabytes), so the cache keeps to a budget.
  *
- * Graph: voice gain → channel gain → master gain → speakers.
+ * Graph: voice gain → channel gain (→ duck, for music and ambience) → master gain → speakers.
  */
 export class WebAudioEngine implements AudioEngine {
   private context = new AudioContext()
@@ -27,9 +26,11 @@ export class WebAudioEngine implements AudioEngine {
   /** Lowers music and ambience under narration, separately from the reader's volumes. */
   private duck = this.context.createGain()
   private channels: Record<Exclude<Channel, 'master'>, GainNode>
-  private music: MusicVoice | null = null
-  private ambient = new Map<string, AmbientVoice>()
+  /** Playing loops, keyed "music" or "ambient:<id>". */
+  private layers = new Map<string, Layer>()
   private buffers = new Map<string, Promise<AudioBuffer | null>>()
+  /** Decoded sizes, in least-recently-used order (Map keeps insertion order). */
+  private sizes = new Map<string, number>()
 
   constructor(private baseUrl: string) {
     this.master.connect(this.context.destination)
@@ -48,48 +49,23 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   setMusic(voice: Voice | null, fadeMs: number): void {
-    const playing = this.music
-    if (playing && voice && playing.src === voice.src) {
-      this.ramp(playing.gain.gain, voice.volume, fadeMs)
-      return
-    }
-
-    if (playing) {
-      this.music = null
-      this.ramp(playing.gain.gain, 0, fadeMs)
-      this.afterFade(fadeMs, () => {
-        playing.element.pause()
-        playing.element.removeAttribute('src')
-        playing.source.disconnect()
-        playing.gain.disconnect()
-      })
-    }
-
-    if (voice) {
-      const element = new Audio(this.url(voice.src))
-      element.loop = true
-      element.addEventListener('error', () => console.warn(`Could not load music: ${voice.src}`))
-
-      const source = this.context.createMediaElementSource(element)
-      const gain = this.context.createGain()
-      gain.gain.value = 0
-      source.connect(gain).connect(this.channels.music)
-
-      this.music = { src: voice.src, element, source, gain }
-      element.play().catch((error) => console.warn(`Could not play music: ${voice.src}`, error))
-      this.ramp(gain.gain, voice.volume, fadeMs)
-    }
+    this.setLayer('music', this.channels.music, voice, fadeMs)
   }
 
   setAmbient(id: string, voice: Voice | null, fadeMs: number): void {
-    const playing = this.ambient.get(id)
+    this.setLayer(`ambient:${id}`, this.channels.ambience, voice, fadeMs)
+  }
+
+  /** Fade a loop to `voice` (or silence). The same track at a new volume keeps playing. */
+  private setLayer(key: string, channel: GainNode, voice: Voice | null, fadeMs: number): void {
+    const playing = this.layers.get(key)
     if (playing && voice && playing.src === voice.src) {
       this.ramp(playing.gain.gain, voice.volume, fadeMs)
       return
     }
 
     if (playing) {
-      this.ambient.delete(id)
+      this.layers.delete(key)
       this.ramp(playing.gain.gain, 0, fadeMs)
       this.afterFade(fadeMs, () => {
         playing.node?.stop()
@@ -100,13 +76,13 @@ export class WebAudioEngine implements AudioEngine {
     if (voice) {
       const gain = this.context.createGain()
       gain.gain.value = 0
-      gain.connect(this.channels.ambience)
-      const layer: AmbientVoice = { src: voice.src, gain }
-      this.ambient.set(id, layer)
+      gain.connect(channel)
+      const layer: Layer = { src: voice.src, gain }
+      this.layers.set(key, layer)
 
       this.load(voice.src).then((buffer) => {
         // Stopped or replaced while loading.
-        if (!buffer || this.ambient.get(id) !== layer) return
+        if (!buffer || this.layers.get(key) !== layer) return
         layer.node = this.context.createBufferSource()
         layer.node.buffer = buffer
         layer.node.loop = true
@@ -130,36 +106,37 @@ export class WebAudioEngine implements AudioEngine {
     })
   }
 
-  /** Narration streams like music, since a line can run for minutes. */
+  /**
+   * Narration plays from decoded buffers through the audio graph, not from <audio> elements:
+   * once the context is unlocked, browsers that block autoplay (Brave by default) let it
+   * play without a click before every line. A line started while the context is still
+   * suspended waits and plays once it resumes, and its position follows the audio clock.
+   */
   playVoice(src: string, volume: number, onEnded: () => void): VoiceHandle {
-    const element = new Audio(this.url(src))
-    const source = this.context.createMediaElementSource(element)
     const gain = this.context.createGain()
     gain.gain.value = volume
-    source.connect(gain).connect(this.channels.voice)
+    gain.connect(this.channels.voice)
 
+    let node: AudioBufferSourceNode | null = null
+    let startedAt = 0
     let finished = false
-    const release = () => {
-      element.pause()
-      element.removeAttribute('src')
-      source.disconnect()
-      gain.disconnect()
-    }
     // A line that can't play counts as finished, so the queue (and the turn guard) moves on.
     const finish = () => {
       if (finished) return
       finished = true
-      release()
+      gain.disconnect()
       onEnded()
     }
-    element.addEventListener('ended', finish)
-    element.addEventListener('error', () => {
-      console.warn(`Could not load narration: ${src}`)
-      finish()
-    })
-    element.play().catch((error) => {
-      console.warn(`Could not play narration: ${src}`, error)
-      finish()
+
+    this.load(src).then((buffer) => {
+      if (finished) return
+      if (!buffer) return finish()
+      node = this.context.createBufferSource()
+      node.buffer = buffer
+      node.connect(gain)
+      node.addEventListener('ended', finish)
+      startedAt = this.context.currentTime
+      node.start()
     })
 
     return {
@@ -167,33 +144,18 @@ export class WebAudioEngine implements AudioEngine {
         if (finished) return
         finished = true
         this.ramp(gain.gain, 0, fadeMs)
-        this.afterFade(fadeMs, release)
+        this.afterFade(fadeMs, () => {
+          node?.stop()
+          gain.disconnect()
+        })
       },
+      position: () => (node ? (this.context.currentTime - startedAt) * 1000 : 0),
     }
   }
 
-  private durations = new Map<string, Promise<number>>()
-
-  /** Reads just the file's metadata; never plays it. */
+  /** A line's length, from its decoded audio (which is then ready to play). */
   voiceDuration(src: string): Promise<number> {
-    let duration = this.durations.get(src)
-    if (!duration) {
-      duration = new Promise<number>((resolve) => {
-        const element = new Audio()
-        element.preload = 'metadata'
-        const done = (ms: number) => {
-          clearTimeout(timeout)
-          element.removeAttribute('src')
-          resolve(ms)
-        }
-        const timeout = setTimeout(() => done(0), 5000)
-        element.addEventListener('loadedmetadata', () => done(Number.isFinite(element.duration) ? element.duration * 1000 : 0))
-        element.addEventListener('error', () => done(0))
-        element.src = this.url(src)
-      })
-      this.durations.set(src, duration)
-    }
-    return duration
+    return this.load(src).then((buffer) => (buffer ? buffer.duration * 1000 : 0))
   }
 
   preload(srcs: string[]): void {
@@ -217,6 +179,7 @@ export class WebAudioEngine implements AudioEngine {
 
   private load(src: string): Promise<AudioBuffer | null> {
     let buffer = this.buffers.get(src)
+    if (buffer) this.touch(src)
     if (!buffer) {
       buffer = fetch(this.url(src))
         .then((response) => {
@@ -224,6 +187,11 @@ export class WebAudioEngine implements AudioEngine {
           return response.arrayBuffer()
         })
         .then((data) => this.context.decodeAudioData(data))
+        .then((decoded) => {
+          this.sizes.set(src, decoded.length * decoded.numberOfChannels * 4)
+          this.evict()
+          return decoded
+        })
         .catch((error) => {
           console.warn(`Could not load sound: ${src}`, error)
           return null
@@ -231,6 +199,26 @@ export class WebAudioEngine implements AudioEngine {
       this.buffers.set(src, buffer)
     }
     return buffer
+  }
+
+  private touch(src: string): void {
+    const size = this.sizes.get(src)
+    if (size === undefined) return
+    this.sizes.delete(src)
+    this.sizes.set(src, size)
+  }
+
+  /** Drop least recently used decoded audio over the budget, never a loop that's playing. */
+  private evict(): void {
+    const playing = new Set([...this.layers.values()].map((l) => l.src))
+    let total = [...this.sizes.values()].reduce((a, b) => a + b, 0)
+    for (const [src, size] of this.sizes) {
+      if (total <= CACHE_BUDGET_BYTES) break
+      if (playing.has(src)) continue
+      this.sizes.delete(src)
+      this.buffers.delete(src)
+      total -= size
+    }
   }
 
   /** Move a gain smoothly from wherever it is now, cancelling any ramp in progress. */

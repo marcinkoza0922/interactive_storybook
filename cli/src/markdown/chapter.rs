@@ -311,7 +311,8 @@ impl ChapterParser<'_> {
     fn cue(&mut self, name: &str, attrs: &Attrs, line: usize) -> Option<Cue> {
         let stop = attrs.has_word("stop");
         let allowed: &[&str] = match (name, stop) {
-            ("sfx" | "voice", _) => &["volume", "delay"],
+            ("sfx", _) => &["volume", "delay"],
+            ("voice", _) => &["volume", "delay", "timing"],
             (_, true) => &["fade", "delay", "id"],
             _ => &["volume", "fade", "delay", "id"],
         };
@@ -354,9 +355,40 @@ impl ChapterParser<'_> {
                 let id = id.rsplit('/').next().unwrap_or(&id).split('.').next().unwrap_or(&id).to_string();
                 Cue::Ambient { id, src, volume, fade_ms, delay_ms }
             }
-            "voice" => Cue::Voice { src, volume, delay_ms },
+            "voice" => {
+                let timing = self.voice_timing(sound, attrs.get("timing"), line);
+                Cue::Voice { src, volume, delay_ms, words: None, timing }
+            }
             _ => Cue::Sfx { src, volume, delay_ms },
         })
+    }
+
+    /// Word timings for a line of narration: the file named with `timing=` (relative to the
+    /// recording), or a .vtt, .srt or .json file beside the recording with the same name.
+    fn voice_timing(&mut self, sound: &str, named: Option<&str>, line: usize) -> Option<Vec<crate::timing::Segment>> {
+        let recording = self.assets.source(sound, self.file, AssetKind::Audio).ok()?;
+        let folder = recording.parent()?.to_path_buf();
+        let file = match named {
+            Some(name) if name.starts_with("./") || name.starts_with("../") => self.file.parent()?.join(name),
+            Some(name) => folder.join(name),
+            None => ["vtt", "srt", "json"].iter().map(|ext| recording.with_extension(ext)).find(|p| p.is_file())?,
+        };
+        let text = match std::fs::read_to_string(&file) {
+            Ok(text) => text,
+            Err(_) => {
+                self.error(line, format!("can't find the timing file `{}`", named.unwrap_or_default()));
+                return None;
+            }
+        };
+        let extension = file.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
+        match crate::timing::parse(&text, &extension) {
+            Ok(segments) => Some(segments),
+            Err(message) => {
+                let shown = file.file_name().and_then(|n| n.to_str()).unwrap_or("timing file");
+                self.error(line, format!("{shown}: {message}"));
+                None
+            }
+        }
     }
 
     fn container(&mut self, name: &str, attrs: &Attrs, line: usize) -> Option<Container> {

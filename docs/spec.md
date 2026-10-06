@@ -257,14 +257,19 @@ Voice cues (`::voice{name}`, options `volume` and `delay`) are lines of narratio
 
 - **One line at a time, strictly in order.** Lines never overlap. Lines revealed on the same page queue behind the one playing, in the order they appear in the text; revealing never interrupts narration. A voice cue's `delay` is a pause before the line once its turn comes (after the previous line ends), not a timer from when it was revealed, so it can't reorder lines.
 - **A page turn cuts it off.** Turning the page (forward, back, or a jump) stops the current line with a short fade (150 ms) and drops the queue; moving forward, the new page's lines then start.
-- **Forward only**, like sound effects.
+- **Forward, and when resuming.** Like sound effects, narration doesn't play going back or jumping to a page already read. Resuming a page (Continue on the title screen, or a `tome preview` reload) reads its narration from the first line, since that's where the reader picks the book up.
 - **Turn guard.** While a line the reader can hear plays, is queued, or is about to start (a pending `delay`), the first attempt to turn the page (advance on a fully revealed page, or back) only shows "Narration is still playing — press again to turn the page." A second attempt within 4 seconds turns it. Revealing a step never asks, nor do deliberate jumps from the menu.
 - **Readers can turn it off.** With the Narration channel (or all sound) muted or at zero, nothing is heard and the guard is off. Muting mid-line silences the line without ending it.
+- **Highlighting.** While a line is heard, the paragraph it narrates (the block after its cue) is tinted, or, given word timings, the word being spoken is highlighted. Timings come from a timing file beside the recording (same name; `.vtt`, `.srt` or `.json`: plain segments, Whisper segments, or a word list) or named with `timing=`. The compiler aligns the timing's words to the paragraph's (normalized, with a short look-ahead to re-sync over small differences), spreads phrase times across their words by length, and emits a start time per word, with null for words after the narration ends; it warns when under 60% of the timed words are found in the paragraph. The runtime paints the word with a CSS Custom Highlight, polling playback each frame. Readers can turn it off (Settings → Reading); silent narration isn't highlighted.
 - **Ducking.** While narration is heard, music and ambience dip to the book's `ducking` level (`[audio]` in `book.toml`, default 0.35, `1` for none) over 300 ms, and recover over 800 ms when narration ends. They stay down through pauses between queued lines and across a page turn onto more narration, so they don't pump. Sound effects aren't ducked. The dip is a separate gain after the reader's own volumes, so it never changes their settings. Silent narration doesn't duck, and muting narration mid-line brings the music straight back.
 - **Auto mode follows the narration**, heard or not: it waits for each line before advancing. With narration off, lines pass silently, each lasting as long as its recording (read from the file's metadata), since a line's length is a good guide to how long its text takes to read.
-- Lines stream like music (an `<audio>` element), since a line can run for minutes. A line that fails to load counts as finished, so the queue and the guard never get stuck.
+- A line that fails to load counts as finished, so the queue and the guard never get stuck.
 
-### 6.5 Web autoplay
+### 6.5 Playback
+
+All sound (music, ambience, effects and narration) plays from decoded buffers through one Web Audio graph, never from `<audio>` elements. Browsers that block autoplay (Brave does by default) refuse an element's `play()` unless a click comes right before it, which a queued narration line, a page's music or a preview reload never has; a resumed audio context plays freely. Buffers also loop music and ambience without gaps, and give narration highlighting an exact clock. Decoded music is large (a few minutes of stereo is tens of megabytes), so decoded audio is cached within a 256 MB budget, least recently used first, never evicting a track that's playing; the current and next pages' sounds are decoded ahead.
+
+### 6.6 Web autoplay
 
 Browsers block audio before user interaction. The landing screen's *Start* / *Continue* action serves as the required gesture; no audio is attempted before it.
 
@@ -442,6 +447,7 @@ Authors set the defaults; readers can override **only settings that serve access
 - **Music, ambience, sound effects:** separate volume/mute.
 - **Auto mode** on/off and interval.
 - **Already read** flag.
+- **Reset reading progress** (with a confirmation): forgets the position, the furthest chapter (relocking references) and the already-read flag, and returns to the title screen. Bookmarks and highlights are deleted only if the reader ticks *Also delete bookmarks and highlights*; other settings stay. Jumping to a kept bookmark or highlight past the next unread chapter shows the same spoiler warning as the chapter list.
 
 Text is semantic HTML; all controls are keyboard- and screen-reader-accessible.
 

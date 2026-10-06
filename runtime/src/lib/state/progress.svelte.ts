@@ -41,6 +41,21 @@ export class Progress {
     this.persist()
   }
 
+  /**
+   * Start the book over: forget the position, the furthest chapter (relocking references) and
+   * the already-read flag. Bookmarks and highlights go too only if asked; settings stay.
+   */
+  resetProgress({ annotations }: { annotations: boolean }): void {
+    this.save.position = null
+    this.save.furthest_chapter_id = null
+    this.save.settings.already_read = false
+    if (annotations) {
+      this.save.bookmarks = []
+      this.save.highlights = []
+    }
+    this.persist()
+  }
+
   updateSettings(changes: Partial<Settings>): void {
     Object.assign(this.save.settings, changes)
     this.persist()

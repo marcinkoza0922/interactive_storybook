@@ -50,6 +50,8 @@ export interface Settings {
   /** Special typography plus entrance and resting animations. */
   special_text: boolean
   audio: Record<AudioChannelName, ChannelSetting>
+  /** Highlight the words (or paragraph) being narrated. */
+  narration_highlight: boolean
   auto_advance: boolean
   auto_interval_s: number
   /** Unlocks every reference and removes spoiler warnings. */
@@ -78,6 +80,7 @@ export function defaultSettings(prefersReducedMotion: boolean): Settings {
     accents: true,
     special_text: !prefersReducedMotion,
     audio: { master: channel(1), music: channel(0.8), ambience: channel(0.8), sfx: channel(1), voice: channel(1) },
+    narration_highlight: true,
     auto_advance: false,
     auto_interval_s: 8,
     already_read: false,

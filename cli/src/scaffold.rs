@@ -6,6 +6,8 @@ use std::path::Path;
 
 const GUIDE: &str = include_str!("../templates/GUIDE.md");
 const PARCHMENT: &str = include_str!("../templates/parchment.svg");
+const VOICE: &[u8] = include_bytes!("../templates/voice/oh-how-wonderful.ogg");
+const VOICE_TIMING: &str = include_str!("../templates/voice/oh-how-wonderful.vtt");
 
 pub fn create(dir: &Path, title: &str) -> Result<()> {
     if dir.exists() && fs::read_dir(dir)?.next().is_some() {
@@ -33,6 +35,7 @@ pub fn create(dir: &Path, title: &str) -> Result<()> {
              This paragraph fades in when the reader advances.\n\n\
              And this one after it.\n\
              :::\n\n\
+             ::voice{oh-how-wonderful}\n\
              “Oh, :fx[how wonderful]{wave},” she said, not meaning it at all.\n\n\
              ::pagebreak\n\n\
              ::paper{parchment}\n\
@@ -64,9 +67,13 @@ pub fn create(dir: &Path, title: &str) -> Result<()> {
         (".gitignore", "dist/\n".to_string()),
         ("assets/audio/.gitkeep", String::new()),
         ("assets/images/parchment.svg", PARCHMENT.to_string()),
+        ("assets/voice/oh-how-wonderful.vtt", VOICE_TIMING.to_string()),
         ("assets/video/.gitkeep", String::new()),
         ("assets/fonts/.gitkeep", String::new()),
     ];
+    // Recordings are binary; everything else is text.
+    let binary: Vec<(&str, &[u8])> = vec![("assets/voice/oh-how-wonderful.ogg", VOICE)];
+    let files = files.into_iter().map(|(path, text)| (path, text.into_bytes())).chain(binary.into_iter().map(|(p, b)| (p, b.to_vec())));
     for (path, contents) in files {
         let path = dir.join(path);
         fs::create_dir_all(path.parent().unwrap())?;
@@ -90,6 +97,12 @@ mod tests {
         assert_eq!(compiled.bundle.chapters[0].pages.len(), 2);
         let papers: Vec<_> = compiled.bundle.chapters[0].pages.iter().map(|p| p.paper.as_deref()).collect();
         assert_eq!(papers, [None, Some("parchment")], "the second page shows off a textured paper");
+        let narrated = compiled.bundle.chapters[0].pages[0].blocks.iter().flat_map(|b| &b.cues).find_map(|c| match c {
+            crate::bundle::Cue::Voice { words, .. } => Some(words.clone()),
+            _ => None,
+        });
+        let words = narrated.flatten().expect("the dialogue is narrated, with word timings");
+        assert!(words[0] == Some(0) && words.last() == Some(&None), "only “Oh, how wonderful” is lit: {words:?}");
         assert!(create(&book, "Again").is_err(), "won't overwrite");
     }
 }

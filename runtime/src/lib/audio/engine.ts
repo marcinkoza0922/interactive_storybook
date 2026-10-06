@@ -6,6 +6,8 @@ export type Channel = 'master' | 'music' | 'ambience' | 'sfx' | 'voice'
 export interface VoiceHandle {
   /** Stop early, fading out; `onEnded` is not called. */
   stop(fadeMs: number): void
+  /** How far into the line playback is, in ms. */
+  position?(): number
 }
 
 /**

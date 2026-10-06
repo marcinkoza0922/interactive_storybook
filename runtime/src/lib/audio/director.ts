@@ -27,6 +27,14 @@ export interface DirectorOptions {
 
 type NarrationCue = Extract<Cue, { kind: 'voice' }>
 
+/** The line being heard: which paragraph it narrates, and how far into it playback is. */
+export interface NarrationProgress {
+  blockId: string
+  /** Start of each word of the paragraph, in ms (null: never spoken); absent without a timing file. */
+  words?: (number | null)[]
+  ms: number
+}
+
 /**
  * - `enter`: reading starts (begin or resume)
  * - `turn`: the reader arrived on another page
@@ -46,7 +54,8 @@ type Fades = Record<string, number>
  * Narration (voice cues) plays one line at a time, strictly in order: lines revealed on the
  * same page queue behind the one playing, and a line's delay is a pause before it once its
  * turn comes. Any page turn cuts the current line off and drops the queue. Like sound
- * effects, narration only plays moving forward.
+ * effects, narration plays moving forward, not going back; resuming a page reads its
+ * narration from the start.
  */
 export class AudioDirector {
   private current: AudioState = SILENCE
@@ -56,7 +65,9 @@ export class AudioDirector {
 
   /** The line in progress, whether waiting out its delay, playing, or passing silently. */
   private narration: VoiceHandle | null = null
-  private narrationQueue: NarrationCue[] = []
+  private narrationQueue: { cue: NarrationCue; blockId: string }[] = []
+  /** The line being heard right now, if any (not while it waits out a delay or passes silently). */
+  private heard: { blockId: string; words?: (number | null)[]; handle: VoiceHandle } | null = null
   private wasNarrating = false
   private duckLevel: number
   private ducked = false
@@ -76,6 +87,11 @@ export class AudioDirector {
     return this.narration !== null || this.narrationQueue.length > 0
   }
 
+  narrationProgress(): NarrationProgress | null {
+    if (!this.heard) return null
+    return { blockId: this.heard.blockId, words: this.heard.words, ms: this.heard.handle.position?.() ?? 0 }
+  }
+
   /**
    * Cut narration off and drop the queue. `release` brings ducked music back up; a page turn
    * holds it down until it knows whether the new page starts narrating too.
@@ -84,6 +100,7 @@ export class AudioDirector {
     this.narrationQueue = []
     this.narration?.stop(NARRATION_CUT_MS)
     this.narration = null
+    this.heard = null
     if (release) this.setDucked(false)
     this.notifyNarration()
   }
@@ -109,7 +126,12 @@ export class AudioDirector {
         const visible = page.blocks.filter((b) => (b.reveal?.step ?? 0) <= reader.revealed)
         this.fire(this.stateBefore(reader.position), visible)
       } else if (change === 'enter') {
+        // Resuming (Continue, or a preview reload): restore the page's sound at once, and read
+        // its narration from the first line, since this is where the reader picks the book up.
         this.reconcile(this.stateAtEnd(reader.position))
+        for (const block of page.blocks.filter((b) => (b.reveal?.step ?? 0) <= reader.revealed)) {
+          for (const cue of block.cues ?? []) if (cue.kind === 'voice') this.narrate(cue, block.id)
+        }
       } else {
         const target = this.stateAtEnd(reader.position)
         this.schedule(() => this.reconcile(target), this.restoreDelayMs)
@@ -136,12 +158,12 @@ export class AudioDirector {
     let target = base
     const fades: Fades = {}
 
-    for (const cue of blocks.flatMap((b) => b.cues ?? [])) {
+    for (const { cue, blockId } of blocks.flatMap((b) => (b.cues ?? []).map((cue) => ({ cue, blockId: b.id })))) {
       // Narration keeps its own order and timing, delays included.
       if (cue.kind === 'voice') {
-        this.narrate(cue)
+        this.narrate(cue, blockId)
       } else if (cue.delay_ms && cue.delay_ms > 0) {
-        this.schedule(() => this.play(cue), cue.delay_ms)
+        this.schedule(() => this.play(cue, blockId), cue.delay_ms)
       } else if (cue.kind === 'sfx') {
         this.engine.playSfx(cue.src, cue.volume ?? 1)
       } else {
@@ -152,8 +174,8 @@ export class AudioDirector {
     this.reconcile(target, fades)
   }
 
-  private play(cue: Cue): void {
-    if (cue.kind === 'voice') this.narrate(cue)
+  private play(cue: Cue, blockId: string): void {
+    if (cue.kind === 'voice') this.narrate(cue, blockId)
     else if (cue.kind === 'sfx') this.engine.playSfx(cue.src, cue.volume ?? 1)
     else this.reconcile(applyCue(this.current, cue), { [voiceKey(cue)]: fadeFor(cue) })
   }
@@ -163,8 +185,8 @@ export class AudioDirector {
   }
 
   /** Queue a line, starting it at once if nothing is in progress. */
-  private narrate(cue: NarrationCue): void {
-    this.narrationQueue.push(cue)
+  private narrate(cue: NarrationCue, blockId: string): void {
+    this.narrationQueue.push({ cue, blockId })
     if (!this.narration) this.nextNarration()
     else this.notifyNarration()
   }
@@ -175,12 +197,14 @@ export class AudioDirector {
    * page turn cancels whichever phase is in progress.
    */
   private nextNarration(): void {
-    const cue = this.narrationQueue.shift()
-    if (!cue) {
+    const next = this.narrationQueue.shift()
+    this.heard = null
+    if (!next) {
       this.narration = null
       this.setDucked(false)
       return this.notifyNarration()
     }
+    const { cue, blockId } = next
 
     const line: VoiceHandle = { stop: () => phase.stop(NARRATION_CUT_MS) }
     let phase: VoiceHandle
@@ -192,6 +216,7 @@ export class AudioDirector {
       if (this.narrationEnabled()) {
         this.setDucked(true)
         phase = this.engine.playVoice(cue.src, cue.volume ?? 1, finished)
+        this.heard = { blockId, words: cue.words, handle: phase }
       } else {
         let timer: ReturnType<typeof setTimeout> | undefined
         let cancelled = false
@@ -267,7 +292,7 @@ export class AudioDirector {
     const srcs = pages
       .flatMap((p) => p?.blocks ?? [])
       .flatMap((b) => b.cues ?? [])
-      .flatMap((c) => (c.kind === 'sfx' || c.kind === 'ambient' ? [c.src] : []))
+      .flatMap((c) => ('src' in c ? [c.src] : []))
     if (srcs.length > 0) this.engine.preload(srcs)
   }
 

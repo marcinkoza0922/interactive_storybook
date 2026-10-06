@@ -23,11 +23,15 @@
     onjump: (position: Position) => void
     onreferences: () => void
     ontitle: () => void
+    /** Progress was reset: leave the book for the title screen. */
+    onreset: () => void
   }
 
-  let { bundle, progress, position, onclose, onjump, onreferences, ontitle }: Props = $props()
+  let { bundle, progress, position, onclose, onjump, onreferences, ontitle, onreset }: Props = $props()
 
-  type View = 'main' | 'chapters' | 'bookmarks' | 'highlights' | 'settings' | { confirmJump: number }
+  type List = 'chapters' | 'bookmarks' | 'highlights'
+  type View = 'main' | List | 'settings' | 'reset' | { confirmJump: Position; from: List }
+  let deleteAnnotations = $state(false)
   let view = $state<View>('main')
   let dialog: HTMLDialogElement
 
@@ -56,9 +60,21 @@
     return `${chapterTitle(ref.chapter_id)} · page ${ref.page + 1}`
   }
 
-  function chooseChapter(chapter: number) {
-    if (jumpRevealsSpoilers(bundle, progress.save, chapter)) show({ confirmJump: chapter })
-    else onjump({ chapter, page: 0 })
+  /** Go to a page, first warning if that would unlock references the reader hasn't reached. */
+  function jumpTo(target: Position, from: List) {
+    if (jumpRevealsSpoilers(bundle, progress.save, target.chapter)) show({ confirmJump: target, from })
+    else onjump(target)
+  }
+
+  function reset() {
+    progress.resetProgress({ annotations: deleteAnnotations })
+    onreset()
+  }
+
+  /** Where Back leads from each view. */
+  function parent(of: View): View {
+    if (typeof of === 'object') return of.from
+    return of === 'reset' ? 'settings' : 'main'
   }
 
   function setVolume(channel: (typeof AUDIO_CHANNELS)[number]['channel'], volume: number) {
@@ -91,7 +107,7 @@
         {/if}
       </nav>
     {:else}
-      <button class="tome-link-button tome-menu-back" onclick={() => show(typeof view === 'object' ? 'chapters' : 'main')}>
+      <button class="tome-link-button tome-menu-back" onclick={() => show(parent(view))}>
         ← Back
       </button>
 
@@ -108,7 +124,7 @@
                   <button
                     class="tome-menu-item"
                     aria-current={chapter === position.chapter ? 'true' : undefined}
-                    onclick={() => chooseChapter(chapter)}
+                    onclick={() => jumpTo({ chapter, page: 0 }, 'chapters')}
                   >
                     {chapterTitle(entry.id, entry.title)}
                   </button>
@@ -118,18 +134,33 @@
           {/each}
         </ol>
       {:else if typeof view === 'object'}
-        {@const targetIndex = view.confirmJump}
-        {@const target = bundle.chapters[targetIndex]}
+        {@const destination = view.confirmJump}
+        {@const from = view.from}
+        {@const target = bundle.chapters[destination.chapter]}
         <h2 class="tome-menu-heading">Skip ahead?</h2>
         <p>
           Jumping to <strong>{target.title}</strong> will unlock references up to that chapter, which may contain
           spoilers.
         </p>
         <div class="tome-menu-actions">
-          <button class="tome-button tome-button-primary" onclick={() => onjump({ chapter: targetIndex, page: 0 })}>
+          <button class="tome-button tome-button-primary" onclick={() => onjump(destination)}>
             Jump to {target.title}
           </button>
-          <button class="tome-button" onclick={() => show('chapters')}>Cancel</button>
+          <button class="tome-button" onclick={() => show(from)}>Cancel</button>
+        </div>
+      {:else if view === 'reset'}
+        <h2 class="tome-menu-heading">Reset reading progress?</h2>
+        <p>
+          The book starts again from the beginning, and references lock again until you reach their chapters. Your
+          settings stay as they are. This can't be undone.
+        </p>
+        <label class="tome-option">
+          <input type="checkbox" bind:checked={deleteAnnotations} />
+          Also delete bookmarks and highlights
+        </label>
+        <div class="tome-menu-actions">
+          <button class="tome-button tome-button-primary" onclick={reset}>Reset progress</button>
+          <button class="tome-button" onclick={() => show('settings')}>Cancel</button>
         </div>
       {:else if view === 'bookmarks'}
         <h2 class="tome-menu-heading">Bookmarks</h2>
@@ -150,7 +181,9 @@
                 />
                 <span class="tome-menu-meta">{pageLabel(bookmark)}</span>
                 <span class="tome-menu-record-actions">
-                  <button class="tome-link-button" onclick={() => onjump(resolvePosition(bundle, bookmark))}>Go</button>
+                  <button class="tome-link-button" onclick={() => jumpTo(resolvePosition(bundle, bookmark), 'bookmarks')}>
+                    Go
+                  </button>
                   <button class="tome-link-button" onclick={() => progress.removeBookmark(bookmark.id)}>Remove</button>
                 </span>
               </li>
@@ -176,7 +209,9 @@
                   onchange={(e) => progress.setHighlightNote(highlight.id, e.currentTarget.value)}
                 ></textarea>
                 <span class="tome-menu-record-actions">
-                  <button class="tome-link-button" onclick={() => onjump(resolvePosition(bundle, highlight))}>Go</button>
+                  <button class="tome-link-button" onclick={() => jumpTo(resolvePosition(bundle, highlight), 'highlights')}>
+                    Go
+                  </button>
                   <button class="tome-link-button" onclick={() => progress.removeHighlight(highlight.id)}>Remove</button>
                 </span>
               </li>
@@ -279,6 +314,14 @@
           <label class="tome-option">
             <input
               type="checkbox"
+              checked={settings.narration_highlight}
+              onchange={(e) => progress.updateSettings({ narration_highlight: e.currentTarget.checked })}
+            />
+            Highlight text as it's narrated
+          </label>
+          <label class="tome-option">
+            <input
+              type="checkbox"
               checked={settings.auto_advance}
               onchange={(e) => progress.updateSettings({ auto_advance: e.currentTarget.checked })}
             />
@@ -304,6 +347,11 @@
             />
             I've already read this book (unlocks every reference)
           </label>
+        </fieldset>
+
+        <fieldset class="tome-fieldset">
+          <legend>Progress</legend>
+          <button class="tome-button" onclick={() => show('reset')}>Reset reading progress…</button>
         </fieldset>
       {/if}
     {/if}

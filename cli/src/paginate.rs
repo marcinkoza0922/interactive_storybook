@@ -136,6 +136,7 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
                         }
                     });
                     texts.push((block.match_text, block.forced_refs));
+                    let cues = cues.into_iter().map(|cue| align_narration(cue, &block.html, file, block.line, diagnostics)).collect();
                     Block { id: format!("{}-{next_block}", chapter.id), html: block.html, reveal, cues }
                 })
                 .collect();
@@ -143,6 +144,27 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
             PaginatedPage { page: Page { illustration: draft.illustration, blocks, references: vec![], paper }, texts }
         })
         .collect()
+}
+
+/// Below this share of matched words, a timing file probably belongs to different text.
+const MIN_TIMING_MATCH: f64 = 0.6;
+
+/// Turn a voice cue's timing file into a start time for each word of the paragraph it narrates.
+fn align_narration(cue: Cue, html: &str, file: &Path, line: usize, diagnostics: &mut Diagnostics) -> Cue {
+    let Cue::Voice { src, volume, delay_ms, timing: Some(segments), .. } = cue else { return cue };
+    let words = crate::timing::html_words(html);
+    if words.is_empty() {
+        diagnostics.warning(Some(file), Some(line), "this narration has word timings but no paragraph after it to highlight");
+        return Cue::Voice { src, volume, delay_ms, words: None, timing: None };
+    }
+    let refs: Vec<&str> = words.iter().map(String::as_str).collect();
+    let (starts, share) = crate::timing::align(&refs, &segments);
+    if share < MIN_TIMING_MATCH {
+        diagnostics.warning(Some(file), Some(line), format!("only {:.0}% of the narration's timed words are in the paragraph after it", share * 100.0)).help =
+            Some("check the timing file belongs to this line; the paragraph is highlighted as a whole instead".into());
+        return Cue::Voice { src, volume, delay_ms, words: None, timing: None };
+    }
+    Cue::Voice { src, volume, delay_ms, words: Some(starts), timing: None }
 }
 
 #[cfg(test)]

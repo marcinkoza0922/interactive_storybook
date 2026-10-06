@@ -729,6 +729,21 @@ body {
   background-color: var(--tome-highlight-bg);
 }
 
+/* Narration: the word being spoken, or the paragraph being read when there are no word timings. */
+::highlight(tome-narration) {
+  background-color: var(--tome-narration-word-bg);
+}
+
+.tome-block {
+  transition: background-color 300ms, box-shadow 300ms;
+}
+
+.tome-block[data-narrating='paragraph'] {
+  border-radius: 3px;
+  background-color: var(--tome-narration-paragraph-bg);
+  box-shadow: 0 0 0 0.3em var(--tome-narration-paragraph-bg);
+}
+
 .tome-highlight-button {
   position: fixed;
   z-index: 10;

@@ -3,7 +3,7 @@ import type { Highlight, TextAnchor } from '../storage/save'
 export type HighlightAnchor = Pick<Highlight, 'start' | 'end' | 'text'>
 
 /** The element holding the text the reader sees: the animated copy, if the block has one. */
-function visibleTextRoot(block: Element): Element {
+export function visibleTextRoot(block: Element): Element {
   return block.querySelector('.tome-visual') ?? block
 }
 
@@ -62,7 +62,7 @@ export function anchorSelection(page: Element, selection: Selection | null): Hig
 }
 
 /** A DOM range covering characters [from, to) of `root`'s text. */
-function rangeIn(root: Element, from: number, to: number): Range | null {
+export function rangeIn(root: Element, from: number, to: number): Range | null {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
   const range = document.createRange()
   let seen = 0

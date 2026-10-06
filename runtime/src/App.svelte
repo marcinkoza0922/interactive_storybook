@@ -181,6 +181,7 @@
     {progress}
     {narrating}
     narrationAudible={narrationAudible(progress.settings)}
+    narrationProgress={() => director?.narrationProgress() ?? null}
     initial={screen.initial}
     {assetUrl}
     onchange={(reader, change) => director?.update(reader, change)}

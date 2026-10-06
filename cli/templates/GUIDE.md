@@ -95,7 +95,35 @@ Narration plays one line at a time, strictly in the order it appears, and lines 
 overlap. A line revealed while another is playing waits its turn; `delay` adds a pause
 before a line once its turn comes. Turning the page cuts the current line off and starts the
 new page's. While a line plays, the first attempt to turn the page asks the reader to press
-again, so they don't skip it by accident. Narration only plays reading forward.
+again, so they don't skip it by accident. Narration plays reading forward and when a reader
+resumes a page (including `tome preview` reloads), but not when they go back to one.
+
+### Highlighting the words
+
+While a line plays, the paragraph after its cue is highlighted. Give the line a timing file
+and the words light up one by one as they're spoken instead. Put it beside the recording
+with the same name (`the-address.ogg` → `the-address.vtt`), or name it with
+`::voice{the-address timing=address-words.vtt}`. WebVTT, SRT and JSON all work, word by word
+or phrase by phrase; forced-alignment tools such as aeneas or WhisperX, and many speech
+services, produce them:
+
+```
+WEBVTT
+
+00:00.000 --> 00:03.135
+She found the address on the letter at the end of a crooked lane:
+
+00:03.315 --> 00:05.798
+a narrow house with its shutters nailed closed.
+```
+
+The timing's words are matched to the paragraph's, ignoring punctuation and small
+differences; words in a phrase share its time by length. A line can voice just part of a
+paragraph, such as its dialogue, and only those words light up. `tome check` warns when a
+timing file doesn't match the text after its cue. Readers can turn highlighting off under
+Settings → Reading.
+
+### Music under narration
 
 While narration is heard, music and ambience dip so the voice sits on top, and come back
 when it ends. Set how far they dip in `book.toml` (`1` turns it off):

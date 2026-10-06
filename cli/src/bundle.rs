@@ -140,6 +140,13 @@ pub enum Cue {
         volume: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         delay_ms: Option<u64>,
+        /// When each word of the narrated paragraph starts, in ms, for highlighting; null for
+        /// words after the narration ends.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        words: Option<Vec<Option<u64>>>,
+        /// The timing file's segments, until pagination aligns them to the paragraph.
+        #[serde(skip)]
+        timing: Option<Vec<crate::timing::Segment>>,
     },
 }
 
