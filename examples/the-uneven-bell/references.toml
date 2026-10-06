@@ -1,0 +1,78 @@
+# Entries readers can look up, unlocked chapter by chapter. See GUIDE.md.
+
+[[reference]]
+id = "wren"
+match = ["Wren"]
+
+[[reference.section]]
+from = "the-harbour"
+title = "Wren"
+text = "Arrived on the evening ferry with a single bag and an old letter, and nowhere to sleep."
+
+[[reference.section]]
+from = "the-keeper"
+mode = "append"
+text = "The keeper seems to know who she is, or thinks he does. He calls her “the daughter”."
+match = ["the daughter"]
+
+[[reference]]
+id = "the-letter"
+match = ["letter"]
+
+[[reference.section]]
+from = "the-harbour"
+title = "The Letter"
+text = "Folded into Wren’s coat. It asks her to come home, and doesn’t say why."
+
+[[reference.section]]
+from = "the-keeper"
+mode = "append"
+text = "Eleven years old. Its writer has been dead for nine of them."
+
+[[reference]]
+id = "the-bell"
+match = ["bell"]
+
+[[reference.section]]
+from = "the-harbour"
+title = "The Bell"
+text = "Rings from somewhere above the town, slow and uneven. The count is never the same twice."
+
+[[reference.section]]
+from = "the-keeper"
+title = "The Lighthouse Bell"
+text = "Hangs at the top of the lighthouse, in the place where the lamp should be."
+
+[[reference]]
+id = "the-writer"
+match = ["the woman who had written it"]
+
+[[reference.section]]
+from = "the-harbour"
+title = "The Letter Writer"
+text = "Wrote the letter that brought Wren back. Wren knows the handwriting better than her own."
+
+[[reference.section]]
+from = "the-keeper"
+title = "Wren’s Mother"
+text = "The woman who wrote the letter. The keeper’s question suggests Wren was not her only daughter."
+
+[[reference]]
+id = "the-lighthouse"
+match = ["lighthouse"]
+
+[[reference.section]]
+from = "the-harbour"
+title = "The Lighthouse"
+text = "White and windowless, at the top of the cliff. The whole town seems to lean toward it."
+image = "lighthouse.svg"
+image_alt = "A white lighthouse with a red roof on a grey shore"
+
+[[reference]]
+id = "the-keeper"
+match = ["keeper"]
+
+[[reference.section]]
+from = "the-keeper"
+title = "The Keeper"
+text = "Keeps the lighthouse. Younger than Wren expected, with ink on his fingers and a face that gives nothing away."

@@ -19,6 +19,8 @@
 
   const storage = new LocalStorageAdapter()
   const bundleUrl = new URL('book/book.json', document.baseURI).href
+  /** Served by `tome preview`, which reloads the page on every rebuild. */
+  const previewing = new URLSearchParams(location.search).has('preview')
 
   type Screen =
     | { kind: 'loading' }
@@ -61,6 +63,9 @@
       const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
       const progress = new Progress(storage, bundle, await readSave(storage, bundle, defaultSettings(reducedMotion)))
       screen = { kind: 'landing', bundle, progress }
+      // `tome preview` reloads the page on every rebuild; go straight back to where the author was.
+      const position = progress.save.position
+      if (previewing && position) resume(bundle, progress, position)
     } catch (error) {
       screen = { kind: 'error', message: error instanceof Error ? error.message : String(error) }
     }
@@ -88,7 +93,9 @@
   }
 
   /** The first key or click on the title screen starts its music, unless it starts the book. */
-  function onLandingInteraction(event: Event) {
+  function onInteraction(event: Event) {
+    // Audio started without a gesture (a preview reload) stays silent until the next one.
+    engine?.unlock()
     if (screen.kind !== 'landing' || interacted) return
     interacted = true
     // Activating a button begins the book, whose own audio takes over.
@@ -118,7 +125,7 @@
 
   function resume(bundle: Bundle, progress: Progress, position: PageRef) {
     // Resuming lands on an already-seen page: shown fully revealed, its audio restored at once.
-    startReading(bundle, progress, arriveBackward(bundle, resolvePosition(bundle, position)))
+    startReading(bundle, progress, arriveBackward(bundle, resolvePosition(bundle, position, { keepPageOnEdit: previewing })))
   }
 
   function exit(bundle: Bundle, progress: Progress) {
@@ -130,8 +137,8 @@
 </script>
 
 <svelte:window
-  onpointerdown={onLandingInteraction}
-  onkeydown={onLandingInteraction}
+  onpointerdown={onInteraction}
+  onkeydown={onInteraction}
   ongamepadconnected={() => gamepads.start()}
 />
 

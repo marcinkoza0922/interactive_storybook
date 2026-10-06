@@ -1,0 +1,12 @@
+title = "The Uneven Bell"
+author = "A Sample Author"
+language = "en"
+
+[pagination]
+max_words = 260
+
+[audio]
+restore_delay = 3
+
+[illustrations]
+linger = 3

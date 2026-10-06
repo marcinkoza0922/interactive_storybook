@@ -39,6 +39,11 @@ describe('resolvePosition', () => {
     expect(resolvePosition(bundle, at('two', 1, 'stale'))).toEqual({ chapter: 1, page: 0 })
   })
 
+  it('keeps the page while previewing edits', () => {
+    expect(resolvePosition(bundle, at('two', 1, 'stale'), { keepPageOnEdit: true })).toEqual({ chapter: 1, page: 1 })
+    expect(resolvePosition(bundle, at('two', 9, 'stale'), { keepPageOnEdit: true })).toEqual({ chapter: 1, page: 1 })
+  })
+
   it('falls back to the book start when the chapter no longer exists', () => {
     expect(resolvePosition(bundle, at('gone', 1, 'h2'))).toEqual({ chapter: 0, page: 0 })
   })

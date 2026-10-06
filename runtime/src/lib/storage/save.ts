@@ -128,13 +128,14 @@ export function pageRef(bundle: Bundle, { chapter, page }: Position): PageRef {
 /**
  * Map a saved page onto the current bundle. If the chapter's content changed since it was
  * saved, fall back to the start of that chapter; if the chapter is gone, the book start.
+ * While previewing, an author editing a chapter keeps their page instead.
  */
-export function resolvePosition(bundle: Bundle, ref: PageRef): Position {
+export function resolvePosition(bundle: Bundle, ref: PageRef, { keepPageOnEdit = false } = {}): Position {
   const chapter = bundle.chapters.findIndex((c) => c.id === ref.chapter_id)
   if (chapter === -1) return { chapter: 0, page: 0 }
 
   const { content_hash, pages } = bundle.chapters[chapter]
-  if (content_hash !== ref.content_hash) return { chapter, page: 0 }
+  if (content_hash !== ref.content_hash && !keepPageOnEdit) return { chapter, page: 0 }
   return { chapter, page: Math.min(Math.max(ref.page, 0), pages.length - 1) }
 }
 

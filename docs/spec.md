@@ -71,7 +71,7 @@ The first real-world use is the project author's own novel; the framework must n
 
 ### 3.1 Key decisions
 
-- **Rust is the build tool, not the runtime.** The existing crate (`interactive_storybook`) becomes the CLI/compiler.
+- **Rust is the build tool, not the runtime.** The CLI/compiler lives in `cli/` (a Cargo workspace member) and embeds the prebuilt runtime.
 - **Runtime is Svelte**, chosen for its built-in transitions/animation primitives, small bundles (good for PWA) and approachability for contributors.
 - **Text is rendered as HTML** for screen-reader support, native text selection, bidi/CJK shaping and browser accessibility features.
 - **Electron** for desktop (not Tauri): consistent Chromium rendering across platforms is preferred over smaller binaries, as OS webviews (notably WebKitGTK on Linux) are known to cause audio/animation inconsistencies.
@@ -112,20 +112,26 @@ Chapter files may carry TOML front matter (`+++ … +++`) with `id`, `title`, an
 
 ### 4.2 Manuscript: extended Markdown
 
-Base syntax is CommonMark. Extensions use the generic-directive style (`:inline`, `::leaf`, `:::container`) so that plain Markdown editors and pandoc degrade gracefully. **All syntax below is illustrative**; exact grammar is to be finalized during implementation.
+Base syntax is CommonMark with smart punctuation (`"…"` → “…”, `--` → –) and strikethrough. Extensions use the generic-directive style: leaf directives on their own line (`::name{…}`), containers (`:::name{…}` … `:::`) and inline directives (`:name[text]{…}`). Attributes are bare words (a keyword like `stop`, or the directive's main value) and `key=value` pairs, with optional double quotes. Times are in seconds. Directives inside fenced code blocks are left as text. The author-facing guide (`GUIDE.md`, written into every new project) is the reference; in summary:
 
-| Purpose | Sketch |
+| Purpose | Syntax |
 |---|---|
 | Manual page break | `::pagebreak` |
-| Music | `::music{track="storm" fade=2}` · `::music{stop}` · `::music{stop fade=0}` (hard stop) · optional `delay=1.5` on any cue |
-| Ambient layer | `::ambient{track="rain" id="rain"}` · `::ambient{stop="rain"}` |
-| Sound effect | `::sfx{sound="thunder"}` |
-| Reveal block | `:::reveal{effect="fade"}` … `:::` — each paragraph inside is one step |
-| Special text | `:::style{name="handwriting"}` … `:::` or inline `:style[text]{name="whisper"}` |
-| Inline illustration | standard `![alt text](images/map.png)` |
-| Chapter header art | front matter `header_image = "…"` |
-| Illustration track | `::illustration{src="plates/bridge.png" alt="…"}` |
-| Force / suppress a reference | `:ref[the old woman]{id="elara"}` · `:noref[Elara]` |
+| Music | `::music{harbour volume=0.8 fade=2 delay=1}` · `::music{stop}` · `::music{stop fade=0}` (hard stop) |
+| Ambient layer | `::ambient{rain}` (ID defaults to the name; `id=` to override) · `::ambient{stop rain}` · `::ambient{stop}` (all layers) |
+| Sound effect | `::sfx{thunder volume=0.6 delay=1.5}` |
+| Reveal steps | `:::reveal{effect=typewriter duration=2 delay=0.3 easing=ease-in}` … `:::`; each block is a step unless `together`; `rest=wave` adds a resting effect |
+| Resting effect | `:fx[so kind]{wave speed=2}` inline, or a `:::fx{pulse}` block; options `speed`, `amplitude`, `scale`, `min-opacity`, `gradient=name` |
+| Special style | `:style[a coat like her own]{whisper}` or `:::style{handwriting}` |
+| Inline illustration | `![alt](letter.svg)`; with a title (`![alt](letter.svg "Caption")`) alone in a paragraph it becomes a captioned figure |
+| Illustration track | `::illustration{bridge alt="…"}` · `::illustration{none}` |
+| Force / suppress a reference | `:ref[the old woman]{elara}` · `:noref[Elara]` |
+
+A cue fires with the first block after it; cues after a chapter's last block attach to an empty anchor block at the same step as the last block. `::ambient{stop}` is expanded by the compiler into a stop for every layer playing at that point, following the audio state across chapters.
+
+**Asset references.** A bare name like `harbour` is looked up in `assets/` (first in the folder for its kind: `audio/`, `images/` (and `video/`, for posters), `video/`, `fonts/`), and the extension may be omitted when exactly one file of the right kind matches. A path starting with `./` or `../` is relative to the file it's written in, so Markdown editors can preview images. Assets are copied into the bundle with content-hashed names.
+
+**Chapter front matter** (TOML between `+++` lines) may set `id`, `title`, `header_image`, `header_image_alt` and `pagination`. Without a `title`, a leading `# Heading` is the title.
 
 Conversion from DOCX and other formats is out of scope; authors are pointed to **pandoc** (bundling pandoc is a possible future addition).
 
@@ -143,9 +149,10 @@ Conversion from DOCX and other formats is out of scope; authors are pointed to *
 | Command | Purpose |
 |---|---|
 | `tome new <dir>` | Scaffold a project with a sample chapter, references and the default theme. |
-| `tome preview` | Build and serve the book in a browser with live reload on file changes. |
+| `tome preview [--open]` | Serve the book locally (bound to localhost) and rebuild on every change. The page reloads after a successful rebuild and returns to the author's page even if the chapter changed; a failed build keeps serving the last good one and shows the errors over the page. |
 | `tome check` | Validate everything and report friendly, file-and-line-numbered errors and warnings. |
-| `tome build [--target web\|linux\|windows\|all]` | Produce outputs (§10). |
+| `tome build [--target web\|linux\|windows] [--out dir] [--bundle-only]` | Produce outputs (§10). Refuses to replace an output folder it didn't create. |
+| `tome contents [--regenerate]` | Write `contents.toml` from the chapters, for the author to edit. |
 
 `tome check` should at minimum catch:
 
@@ -493,4 +500,3 @@ Voice tracks · hidden-depth content (in-world documents, annotations) · "previ
 ## 17. Open questions
 
 1. **Final name** for the framework/CLI — deferred.
-2. **Exact directive grammar** (and parser choice in Rust) — to be determined incrementally during implementation. Syntax in this document is illustrative only.

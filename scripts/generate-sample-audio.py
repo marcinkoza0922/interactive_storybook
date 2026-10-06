@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Synthesize placeholder audio for the sample book (public/book/audio/).
+"""Synthesize placeholder audio for the sample book (examples/the-uneven-bell/assets/audio/).
 
 Requires numpy and ffmpeg (with libopus). The output is deliberately simple:
 it exists to exercise the audio engine, not to sound good.
@@ -13,7 +13,7 @@ import wave
 import numpy as np
 
 RATE = 44100
-OUT = pathlib.Path(__file__).resolve().parent.parent / 'public' / 'book' / 'audio'
+OUT = pathlib.Path(__file__).resolve().parent.parent / 'examples' / 'the-uneven-bell' / 'assets' / 'audio'
 rng = np.random.default_rng(7)
 
 
@@ -77,7 +77,7 @@ def write(name: str, samples: np.ndarray) -> None:
             ['ffmpeg', '-y', '-loglevel', 'error', '-i', tmp.name, '-c:a', 'libopus', '-b:a', '48k', str(target)],
             check=True,
         )
-        print(f'{target.relative_to(OUT.parent.parent)}  {target.stat().st_size // 1024} KB')
+        print(f'{target.name}  {target.stat().st_size // 1024} KB')
 
 
 if __name__ == '__main__':

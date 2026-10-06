@@ -1,0 +1,17 @@
+# The chapter list readers see. tome never overwrites this file.
+
+[[entry]]
+heading = "Part One"
+
+[[entry]]
+chapter = "the-harbour"
+
+[[entry]]
+chapter = "the-keeper"
+
+[[entry]]
+heading = "Part Two"
+
+[[entry]]
+chapter = "the-tide"
+title = "The Tide (Coda)"

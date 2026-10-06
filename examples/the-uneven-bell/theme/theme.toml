@@ -1,0 +1,66 @@
+# The sample book's look. See GUIDE.md for every option.
+
+[tokens]
+font-heading = "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif"
+
+[[fonts]]
+family = "Caveat"
+src = "caveat-400.woff2"
+
+[styles.handwriting]
+font-family = "Caveat, var(--tome-font-handwriting)"
+font-size = "1.5em"
+line-height = "1.2"
+
+[backgrounds.landing]
+src = "fog.webm"
+poster = "fog.jpg"
+opacity = 0.45
+
+[decoration]
+page_texture = "paper.svg"
+chapter_ornament = "ornament.svg"
+drop_caps = true
+
+[landing]
+cover = "plate-harbour.svg"
+cover_alt = "A small ferry coming into a grey harbour"
+layout = "split"
+music = "keeper"
+
+[[override]]
+from = "the-keeper"
+[override.tokens]
+page-bg = "#1d2125"
+text = "#e6dfd0"
+text-muted = "#a49c8c"
+accent = "#d9b44a"
+accent-contrast = "#1d2125"
+rule = "#3a4046"
+sidebar-bg = "#23282d"
+menu-bg = "#262b30"
+illustration-bg = "#15181b"
+highlight-bg = "rgb(217 180 74 / 0.35)"
+[override.decoration]
+page_texture = "none"
+
+[[override]]
+from = "the-tide"
+[override.tokens]
+page-bg = "#dfe6e9"
+text = "#24313a"
+text-muted = "#5d6c76"
+accent = "#2f6f8f"
+accent-contrast = "#f6f9fa"
+rule = "#c6d2d8"
+sidebar-bg = "#dde5e9"
+menu-bg = "#f1f5f7"
+illustration-bg = "#d5dfe4"
+page-surface = "rgb(246 249 250 / 0.92)"
+highlight-bg = "rgb(47 111 143 / 0.25)"
+[override.decoration]
+page_frame = { src = "frame.svg", slice = 30, width = "18px" }
+[override.backgrounds.reading]
+src = "fog.webm"
+poster = "fog.jpg"
+opacity = 0.6
