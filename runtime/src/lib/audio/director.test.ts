@@ -16,6 +16,32 @@ class FakeEngine implements AudioEngine {
   playSfx(src: string) {
     this.calls.push(`sfx ${src}`)
   }
+  /** Lines of narration started, to finish from the test with end(). */
+  lines: { src: string; onEnded: () => void; stopped: boolean }[] = []
+  /** The most lines ever audible at once: narration must never overlap. */
+  maxConcurrent = 0
+  playVoice(src: string, _volume: number, onEnded: () => void) {
+    this.calls.push(`voice ${src}`)
+    const line = { src, onEnded, stopped: false }
+    this.lines.push(line)
+    this.maxConcurrent = Math.max(this.maxConcurrent, this.lines.filter((l) => !l.stopped).length)
+    return {
+      stop: () => {
+        line.stopped = true
+        this.calls.push(`voice stop ${src}`)
+      },
+    }
+  }
+  /** Each line lasts a second per letter of its name, so tests can tell them apart. */
+  voiceDuration(src: string) {
+    return Promise.resolve(src.length * 1000)
+  }
+  /** Finish the line playing now. */
+  end() {
+    const line = this.lines.filter((l) => !l.stopped).at(-1)!
+    line.stopped = true
+    line.onEnded()
+  }
   preload() {}
   setChannelVolume() {}
   take() {
@@ -157,6 +183,114 @@ describe('AudioDirector', () => {
     engine.take()
     director.stop()
     expect(engine.take()).toEqual(['music off 2000', 'ambient rain off 1500'])
+  })
+})
+
+describe('narration', () => {
+  const voice = (src: string, delay_ms?: number): Cue => ({ kind: 'voice', src, ...(delay_ms ? { delay_ms } : {}) })
+
+  // p0: line A on arrival; reveal step 1 has line BB (after a 500ms pause) then C.   p1: line D.
+  const narrated: Bundle = {
+    ...bundle,
+    chapters: [
+      {
+        id: 'one',
+        title: 'One',
+        content_hash: 'h',
+        pages: [
+          { blocks: [block('a', [voice('A')]), block('b', [voice('BB', 500)], 1), block('c', [voice('C')], 1)] },
+          { blocks: [block('d', [voice('D')])] },
+        ],
+      },
+    ],
+  }
+
+  let engine: FakeEngine
+  let narrating: boolean[]
+  let enabled: boolean
+  let director: AudioDirector
+  let reader: ReaderState
+
+  const step = (next: ReaderState | null, change: 'turn' | 'reveal') => {
+    reader = next!
+    director.update(reader, change)
+  }
+  const page2: ReaderState = { position: { chapter: 0, page: 1 }, revealed: 0, direction: 'forward' }
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    engine = new FakeEngine()
+    narrating = []
+    enabled = true
+    director = new AudioDirector(narrated, engine, { narrationEnabled: () => enabled, onNarrationChange: (n) => narrating.push(n) })
+    reader = start
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  it('plays lines strictly in order, one at a time, with delays as pauses before their turn', () => {
+    director.update(start, 'enter')
+    step(advance(narrated, reader), 'reveal') // queues BB (500ms pause) then C behind A
+    expect(engine.take()).toEqual(['voice A'])
+
+    engine.end()
+    expect(engine.take(), 'BB waits out its pause first').toEqual([])
+    vi.advanceTimersByTime(499)
+    expect(engine.take()).toEqual([])
+    vi.advanceTimersByTime(1)
+    expect(engine.take()).toEqual(['voice BB'])
+
+    engine.end()
+    expect(engine.take()).toEqual(['voice C'])
+    engine.end()
+    expect(director.narrating).toBe(false)
+    expect(engine.maxConcurrent).toBe(1)
+    expect(narrating).toEqual([true, false])
+  })
+
+  it('cuts off the line in progress, even mid-pause, when the page turns', () => {
+    director.update(start, 'enter')
+    step(advance(narrated, reader), 'reveal')
+    engine.end() // A done; BB is in its pause
+    engine.take()
+    step(page2, 'turn')
+    vi.advanceTimersByTime(5000)
+    expect(engine.take(), 'BB and C never play').toEqual(['voice D'])
+  })
+
+  it('plays nothing going back, and stops narration there', () => {
+    director.update(start, 'enter')
+    step(page2, 'turn')
+    engine.take()
+    step(back(narrated, reader), 'turn')
+    vi.advanceTimersByTime(5000)
+    expect(engine.take()).toEqual(['voice stop D'])
+    expect(director.narrating).toBe(false)
+  })
+
+  it('passes lines silently, each as long as its recording, when narration is off', async () => {
+    enabled = false
+    director.update(start, 'enter')
+    step(advance(narrated, reader), 'reveal')
+    expect(director.narrating).toBe(true)
+
+    // A (1s), then BB's 500ms pause and its 2s, then C (1s): 4.5s of silent narration.
+    await vi.advanceTimersByTimeAsync(4400)
+    expect(director.narrating).toBe(true)
+    await vi.advanceTimersByTimeAsync(200)
+    expect(director.narrating).toBe(false)
+    expect(engine.take(), 'nothing is played').toEqual([])
+  })
+
+  it('a page turn also ends silent narration', async () => {
+    enabled = false
+    director.update(start, 'enter')
+    await vi.advanceTimersByTimeAsync(100)
+    step(page2, 'turn')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(director.narrating, 'D is passing silently').toBe(true)
+    await vi.advanceTimersByTimeAsync(600)
+    expect(director.narrating).toBe(false)
   })
 })
 

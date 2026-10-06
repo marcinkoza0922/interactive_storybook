@@ -26,6 +26,7 @@ export function applyCue(state: AudioState, cue: Cue): AudioState {
       return { ...state, ambient: rest }
     }
     case 'sfx':
+    case 'voice':
       return state
   }
 }

@@ -957,3 +957,23 @@ body {
 .tome-block :where(code) {
   font-size: 0.85em;
 }
+
+/* A short message over the page, e.g. asking to confirm a page turn during narration. */
+.tome-toast {
+  position: fixed;
+  z-index: 10;
+  inset-inline: 0;
+  inset-block-end: 4.5rem;
+  width: max-content;
+  max-width: calc(100% - 2rem);
+  margin: 0 auto;
+  padding: 0.6rem 1rem;
+  border-radius: 999px;
+  background: rgb(20 16 12 / 0.85);
+  color: #fdf8f0;
+  font-family: var(--tome-font-ui);
+  font-size: 0.9rem;
+  text-align: center;
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.25);
+  animation: tome-fade-in 200ms ease-out both;
+}

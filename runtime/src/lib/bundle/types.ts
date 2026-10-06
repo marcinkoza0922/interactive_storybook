@@ -103,6 +103,8 @@ export type Cue =
   | { kind: 'ambient'; id: string; src: string; volume?: number; fade_ms?: number; delay_ms?: number }
   | { kind: 'ambient_stop'; id: string; fade_ms?: number; delay_ms?: number }
   | { kind: 'sfx'; src: string; volume?: number; delay_ms?: number }
+  /** A line of narration: queued behind any line already playing on the page. */
+  | { kind: 'voice'; src: string; volume?: number; delay_ms?: number }
 
 export interface Reference {
   id: string

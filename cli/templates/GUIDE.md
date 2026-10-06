@@ -76,6 +76,31 @@ Cues go on their own line. They play when the text after them appears. Name a fi
 
 Times are in seconds. Volume runs from 0 to 1.
 
+## Narration
+
+Recorded lines go in `assets/voice/` (or `assets/audio/`) and play like the cues above, when
+the text after them appears:
+
+```
+::voice{the-dockmaster}
+"If you're waiting for someone," he said, "they're not coming."
+
+:::reveal
+::voice{the-note delay=0.3}
+You came after all.
+:::
+```
+
+Narration plays one line at a time, strictly in the order it appears, and lines never
+overlap. A line revealed while another is playing waits its turn; `delay` adds a pause
+before a line once its turn comes. Turning the page cuts the current line off and starts the
+new page's. While a line plays, the first attempt to turn the page asks the reader to press
+again, so they don't skip it by accident. Narration only plays reading forward.
+
+Readers can turn narration down or off under Settings → Sound → Narration. Auto mode still
+follows it when it's off: each line passes silently for as long as its recording, so the
+narration's pace sets the reading pace.
+
 ## Illustrations
 
 ```

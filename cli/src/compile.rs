@@ -268,7 +268,7 @@ fn resolve_audio(chapters: &mut [(PathBuf, ParsedChapter)], diagnostics: &mut Di
                             Some(if playing.is_empty() { "no ambience is playing".into() } else { format!("playing: {}", playing.join(", ")) });
                     }
                 }
-                Cue::Sfx { .. } => {}
+                Cue::Sfx { .. } | Cue::Voice { .. } => {}
             }
             chapter.items.push(item);
         }
@@ -352,7 +352,11 @@ mod tests {
         let candle_page = &bundle.chapters[0].pages[1];
         let steps: Vec<_> = candle_page.blocks.iter().map(|b| b.reveal.as_ref().map(|r| (r.step, r.effect.as_str()))).collect();
         assert_eq!(steps, [None, Some((1, "slide")), Some((2, "fade")), Some((3, "fade")), Some((4, "typewriter"))]);
-        assert!(matches!(candle_page.blocks[0].cues[..], [Cue::AmbientStop { ref id, fade_ms: Some(3000), .. }] if id == "sea"));
+        assert!(matches!(
+            candle_page.blocks[0].cues[..],
+            [Cue::AmbientStop { ref id, fade_ms: Some(3000), .. }, Cue::Voice { ref src, .. }] if id == "sea" && src.contains("the-address")
+        ));
+        assert!(candle_page.blocks[4].cues.iter().any(|c| matches!(c, Cue::Voice { src, .. } if src.contains("the-note"))), "the note is narrated as it's revealed");
         assert!(candle_page.blocks[4].html.contains(r#"data-tome-style="handwriting""#));
 
         assert_eq!(bundle.chapters[1].pages[0].illustration, Some(None), "chapter 2 clears the illustration track");

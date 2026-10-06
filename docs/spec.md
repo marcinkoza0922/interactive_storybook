@@ -227,7 +227,7 @@ match = ["Elara", "the Witch of Varn"]      # aliases auto-detected in the text
 
 ### 6.1 Channels
 
-Music, ambience and sound effects are separate channels, each with its own volume/mute in reader settings (plus master). A voice channel is reserved for the future voice-track feature.
+Music, ambience, sound effects and narration are separate channels, each with its own volume/mute in reader settings (plus master).
 
 ### 6.2 Cue rules
 
@@ -251,7 +251,19 @@ Resuming from the landing screen restores the page's audio immediately; the rest
 
 Delayed cues that haven't fired yet when the reader leaves the page are dropped. Their lasting effect on music and ambience is already captured in the page states, so only pending sound effects are lost.
 
-### 6.4 Web autoplay
+### 6.4 Narration
+
+Voice cues (`::voice{name}`, options `volume` and `delay`) are lines of narration with their own rules:
+
+- **One line at a time, strictly in order.** Lines never overlap. Lines revealed on the same page queue behind the one playing, in the order they appear in the text; revealing never interrupts narration. A voice cue's `delay` is a pause before the line once its turn comes (after the previous line ends), not a timer from when it was revealed, so it can't reorder lines.
+- **A page turn cuts it off.** Turning the page (forward, back, or a jump) stops the current line with a short fade (150 ms) and drops the queue; moving forward, the new page's lines then start.
+- **Forward only**, like sound effects.
+- **Turn guard.** While a line the reader can hear plays, is queued, or is about to start (a pending `delay`), the first attempt to turn the page (advance on a fully revealed page, or back) only shows "Narration is still playing — press again to turn the page." A second attempt within 4 seconds turns it. Revealing a step never asks, nor do deliberate jumps from the menu.
+- **Readers can turn it off.** With the Narration channel (or all sound) muted or at zero, nothing is heard and the guard is off. Muting mid-line silences the line without ending it.
+- **Auto mode follows the narration**, heard or not: it waits for each line before advancing. With narration off, lines pass silently, each lasting as long as its recording (read from the file's metadata), since a line's length is a good guide to how long its text takes to read.
+- Lines stream like music (an `<audio>` element), since a line can run for minutes. A line that fails to load counts as finished, so the queue and the guard never get stuck.
+
+### 6.5 Web autoplay
 
 Browsers block audio before user interaction. The landing screen's *Start* / *Continue* action serves as the required gesture; no audio is attempted before it.
 

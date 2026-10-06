@@ -1,4 +1,4 @@
-import type { AudioEngine, Channel } from './engine'
+import type { AudioEngine, Channel, VoiceHandle } from './engine'
 import type { Voice } from './state'
 
 interface MusicVoice {
@@ -31,7 +31,7 @@ export class WebAudioEngine implements AudioEngine {
 
   constructor(private baseUrl: string) {
     this.master.connect(this.context.destination)
-    this.channels = { music: this.channel(), ambience: this.channel(), sfx: this.channel() }
+    this.channels = { music: this.channel(), ambience: this.channel(), sfx: this.channel(), voice: this.channel() }
   }
 
   /** Browsers start audio suspended; call this from a user gesture (a click or key press). */
@@ -120,6 +120,72 @@ export class WebAudioEngine implements AudioEngine {
       node.addEventListener('ended', () => gain.disconnect())
       node.start()
     })
+  }
+
+  /** Narration streams like music, since a line can run for minutes. */
+  playVoice(src: string, volume: number, onEnded: () => void): VoiceHandle {
+    const element = new Audio(this.url(src))
+    const source = this.context.createMediaElementSource(element)
+    const gain = this.context.createGain()
+    gain.gain.value = volume
+    source.connect(gain).connect(this.channels.voice)
+
+    let finished = false
+    const release = () => {
+      element.pause()
+      element.removeAttribute('src')
+      source.disconnect()
+      gain.disconnect()
+    }
+    // A line that can't play counts as finished, so the queue (and the turn guard) moves on.
+    const finish = () => {
+      if (finished) return
+      finished = true
+      release()
+      onEnded()
+    }
+    element.addEventListener('ended', finish)
+    element.addEventListener('error', () => {
+      console.warn(`Could not load narration: ${src}`)
+      finish()
+    })
+    element.play().catch((error) => {
+      console.warn(`Could not play narration: ${src}`, error)
+      finish()
+    })
+
+    return {
+      stop: (fadeMs) => {
+        if (finished) return
+        finished = true
+        this.ramp(gain.gain, 0, fadeMs)
+        this.afterFade(fadeMs, release)
+      },
+    }
+  }
+
+  private durations = new Map<string, Promise<number>>()
+
+  /** Reads just the file's metadata; never plays it. */
+  voiceDuration(src: string): Promise<number> {
+    let duration = this.durations.get(src)
+    if (!duration) {
+      duration = new Promise<number>((resolve) => {
+        const element = new Audio()
+        element.preload = 'metadata'
+        const done = (ms: number) => {
+          clearTimeout(timeout)
+          element.removeAttribute('src')
+          resolve(ms)
+        }
+        const timeout = setTimeout(() => done(0), 5000)
+        element.addEventListener('loadedmetadata', () => done(Number.isFinite(element.duration) ? element.duration * 1000 : 0))
+        element.addEventListener('error', () => done(0))
+        element.src = this.url(src)
+      })
+      this.durations.set(src, duration)
+    }
+    return duration
   }
 
   preload(srcs: string[]): void {

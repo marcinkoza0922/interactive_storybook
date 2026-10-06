@@ -1,12 +1,26 @@
 import type { Block, Bundle, Cue } from '../bundle/types'
 import { pageAt, type Position, type ReaderState } from '../reader/navigation'
-import type { AudioEngine } from './engine'
+import type { AudioEngine, VoiceHandle } from './engine'
 import { applyCue, pageEndStates, sameVoice, SILENCE, type AudioState } from './state'
 
 export const DEFAULT_RESTORE_DELAY_MS = 3000
 export const DEFAULT_MUSIC_FADE_IN_MS = 1000
 export const DEFAULT_MUSIC_FADE_OUT_MS = 2000
 export const DEFAULT_AMBIENT_FADE_MS = 1500
+/** How fast a line of narration fades when a page turn cuts it off. */
+export const NARRATION_CUT_MS = 150
+
+export interface DirectorOptions {
+  /**
+   * False when the reader can't hear narration (muted or at zero). Lines then pass silently,
+   * each taking as long as its recording, so auto mode keeps the narration's pace.
+   */
+  narrationEnabled?: () => boolean
+  /** Called when narration starts or stops (a line playing, silent, waiting out its delay, or queued). */
+  onNarrationChange?: (narrating: boolean) => void
+}
+
+type NarrationCue = Extract<Cue, { kind: 'voice' }>
 
 /**
  * - `enter`: reading starts (begin or resume)
@@ -23,6 +37,11 @@ type Fades = Record<string, number>
  * moving forward fires the cues of newly visible blocks (sound effects included);
  * moving back plays no sound effects and restores the page's music and ambience
  * after a delay, so glancing back at a detail doesn't cut in on the current music.
+ *
+ * Narration (voice cues) plays one line at a time, strictly in order: lines revealed on the
+ * same page queue behind the one playing, and a line's delay is a pause before it once its
+ * turn comes. Any page turn cuts the current line off and drops the queue. Like sound
+ * effects, narration only plays moving forward.
  */
 export class AudioDirector {
   private current: AudioState = SILENCE
@@ -30,12 +49,31 @@ export class AudioDirector {
   private endStates: AudioState[][]
   private restoreDelayMs: number
 
+  /** The line in progress, whether waiting out its delay, playing, or passing silently. */
+  private narration: VoiceHandle | null = null
+  private narrationQueue: NarrationCue[] = []
+  private wasNarrating = false
+
   constructor(
     private bundle: Bundle,
     private engine: AudioEngine,
+    private options: DirectorOptions = {},
   ) {
     this.endStates = pageEndStates(bundle)
     this.restoreDelayMs = bundle.audio?.restore_delay_ms ?? DEFAULT_RESTORE_DELAY_MS
+  }
+
+  /** Whether a line of narration is in progress or queued, heard or not. */
+  get narrating(): boolean {
+    return this.narration !== null || this.narrationQueue.length > 0
+  }
+
+  /** Cut narration off and drop the queue. */
+  stopNarration(): void {
+    this.narrationQueue = []
+    this.narration?.stop(NARRATION_CUT_MS)
+    this.narration = null
+    this.notifyNarration()
   }
 
   update(reader: ReaderState, change: Change): void {
@@ -46,7 +84,9 @@ export class AudioDirector {
     } else {
       // Delayed cues belong to the page being left. Their effect on music and ambience
       // is already captured in the page states, so dropping them loses nothing lasting.
+      // A page turn also cuts off the narration of the page being left.
       this.cancelPending()
+      this.stopNarration()
 
       if (reader.direction === 'forward') {
         const visible = page.blocks.filter((b) => (b.reveal?.step ?? 0) <= reader.revealed)
@@ -65,6 +105,7 @@ export class AudioDirector {
   /** Fade everything out, e.g. when leaving the reader. */
   stop(): void {
     this.cancelPending()
+    this.stopNarration()
     this.reconcile(SILENCE)
   }
 
@@ -77,7 +118,10 @@ export class AudioDirector {
     const fades: Fades = {}
 
     for (const cue of blocks.flatMap((b) => b.cues ?? [])) {
-      if (cue.delay_ms && cue.delay_ms > 0) {
+      // Narration keeps its own order and timing, delays included.
+      if (cue.kind === 'voice') {
+        this.narrate(cue)
+      } else if (cue.delay_ms && cue.delay_ms > 0) {
         this.schedule(() => this.play(cue), cue.delay_ms)
       } else if (cue.kind === 'sfx') {
         this.engine.playSfx(cue.src, cue.volume ?? 1)
@@ -90,8 +134,75 @@ export class AudioDirector {
   }
 
   private play(cue: Cue): void {
-    if (cue.kind === 'sfx') this.engine.playSfx(cue.src, cue.volume ?? 1)
+    if (cue.kind === 'voice') this.narrate(cue)
+    else if (cue.kind === 'sfx') this.engine.playSfx(cue.src, cue.volume ?? 1)
     else this.reconcile(applyCue(this.current, cue), { [voiceKey(cue)]: fadeFor(cue) })
+  }
+
+  private narrationEnabled(): boolean {
+    return this.options.narrationEnabled?.() ?? true
+  }
+
+  /** Queue a line, starting it at once if nothing is in progress. */
+  private narrate(cue: NarrationCue): void {
+    this.narrationQueue.push(cue)
+    if (!this.narration) this.nextNarration()
+    else this.notifyNarration()
+  }
+
+  /**
+   * Start the next line: wait out its delay, then play it, or pass it silently for as long as
+   * it lasts if the reader can't hear narration. Each phase replaces `this.narration`, so a
+   * page turn cancels whichever phase is in progress.
+   */
+  private nextNarration(): void {
+    const cue = this.narrationQueue.shift()
+    if (!cue) {
+      this.narration = null
+      return this.notifyNarration()
+    }
+
+    const line: VoiceHandle = { stop: () => phase.stop(NARRATION_CUT_MS) }
+    let phase: VoiceHandle
+    const current = () => this.narration === line
+    const finished = () => current() && this.nextNarration()
+
+    const begin = () => {
+      if (!current()) return
+      if (this.narrationEnabled()) {
+        phase = this.engine.playVoice(cue.src, cue.volume ?? 1, finished)
+      } else {
+        let timer: ReturnType<typeof setTimeout> | undefined
+        let cancelled = false
+        phase = {
+          stop: () => {
+            cancelled = true
+            clearTimeout(timer)
+          },
+        }
+        this.engine.voiceDuration(cue.src).then((ms) => {
+          if (!cancelled) timer = setTimeout(finished, ms)
+        })
+      }
+    }
+
+    this.narration = line
+    if (cue.delay_ms && cue.delay_ms > 0) {
+      const timer = setTimeout(begin, cue.delay_ms)
+      phase = { stop: () => clearTimeout(timer) }
+    } else {
+      phase = { stop: () => {} }
+      begin()
+    }
+    this.notifyNarration()
+  }
+
+  private notifyNarration(): void {
+    const narrating = this.narrating
+    if (narrating !== this.wasNarrating) {
+      this.wasNarrating = narrating
+      this.options.onNarrationChange?.(narrating)
+    }
   }
 
   /** Transition from what is sounding now to `target`, touching only voices that differ. */
@@ -152,7 +263,7 @@ function voiceKey(cue: Cue): string {
 }
 
 function fadeFor(cue: Cue): number {
-  if (cue.kind === 'sfx') return 0
+  if (cue.kind === 'sfx' || cue.kind === 'voice') return 0
   if (cue.fade_ms !== undefined) return cue.fade_ms
   if (cue.kind === 'music') return DEFAULT_MUSIC_FADE_IN_MS
   if (cue.kind === 'music_stop') return DEFAULT_MUSIC_FADE_OUT_MS

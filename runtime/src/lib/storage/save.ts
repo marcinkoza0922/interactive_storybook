@@ -33,7 +33,7 @@ export interface Highlight extends PageRef {
   created_at: string
 }
 
-export type AudioChannelName = 'master' | 'music' | 'ambience' | 'sfx'
+export type AudioChannelName = 'master' | 'music' | 'ambience' | 'sfx' | 'voice'
 
 export interface ChannelSetting {
   volume: number
@@ -77,7 +77,7 @@ export function defaultSettings(prefersReducedMotion: boolean): Settings {
     font_scale: 1,
     accents: true,
     special_text: !prefersReducedMotion,
-    audio: { master: channel(1), music: channel(0.8), ambience: channel(0.8), sfx: channel(1) },
+    audio: { master: channel(1), music: channel(0.8), ambience: channel(0.8), sfx: channel(1), voice: channel(1) },
     auto_advance: false,
     auto_interval_s: 8,
     already_read: false,
@@ -153,6 +153,12 @@ export function unlockedChapter(bundle: Bundle, save: SaveState): number {
 export function withPosition(bundle: Bundle, save: SaveState, position: Position): SaveState {
   const furthest = Math.max(furthestIndex(bundle, save), position.chapter)
   return { ...save, position: pageRef(bundle, position), furthest_chapter_id: bundle.chapters[furthest].id }
+}
+
+/** Narration plays only if the reader can hear it: neither it nor all sound is muted or at zero. */
+export function narrationAudible(settings: Settings): boolean {
+  const { master, voice } = settings.audio
+  return !master.muted && master.volume > 0 && !voice.muted && voice.volume > 0
 }
 
 /** Whether jumping to a chapter would unlock references the reader hasn't reached. */

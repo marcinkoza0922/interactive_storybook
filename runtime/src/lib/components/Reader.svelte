@@ -16,13 +16,18 @@
     bundle: Bundle
     initial: ReaderState
     progress: Progress
+    /** Narration is in progress, heard or passing silently: auto mode waits for it. */
+    narrating: boolean
+    /** The reader can hear narration: only then does turning the page ask to confirm. */
+    narrationAudible: boolean
     assetUrl: (src: string) => string
     /** Every navigation, including reveal steps; drives audio. */
     onchange: (reader: ReaderState, change: 'turn' | 'reveal') => void
     onexit: () => void
   }
 
-  let { bundle, initial, progress, assetUrl, onchange, onexit }: Props = $props()
+  let { bundle, initial, progress, narrating, narrationAudible, assetUrl, onchange, onexit }: Props = $props()
+  const narrationHeard = $derived(narrating && narrationAudible)
 
   let reader = $state(untrack(() => initial))
   /** Blocks whose entrance animation is still running. */
@@ -33,6 +38,10 @@
   let panelOpen = $state(false)
   let selectedReference = $state<string | null>(null)
   let menuOpen = $state(false)
+  /** Shown after a first attempt to turn the page during narration. */
+  let turnNotice = $state(false)
+  let turnNoticeTimer: ReturnType<typeof setTimeout> | undefined
+  const TURN_CONFIRM_MS = 4000
   /** A text selection that can be turned into a highlight, and where to offer it. */
   let pendingHighlight = $state<{ anchor: HighlightAnchor; x: number; y: number } | null>(null)
 
@@ -121,6 +130,31 @@
       ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
   }
 
+  /**
+   * While narration plays, the first attempt to turn the page only warns; a second within a
+   * few seconds turns it (cutting the narration off). Revealing a step never asks.
+   */
+  function confirmTurn(): boolean {
+    if (!narrationHeard || turnNotice) {
+      dismissTurnNotice()
+      return true
+    }
+    turnNotice = true
+    turnNoticeTimer = setTimeout(dismissTurnNotice, TURN_CONFIRM_MS)
+    return false
+  }
+
+  function dismissTurnNotice() {
+    clearTimeout(turnNoticeTimer)
+    turnNotice = false
+  }
+
+  // Once the narration ends (or is muted), turning needs no confirmation.
+  $effect(() => {
+    if (!narrationHeard) dismissTurnNotice()
+  })
+  onDestroy(() => clearTimeout(turnNoticeTimer))
+
   function onAdvance() {
     // Advancing from the illustration (lingering or toggled) returns to the text.
     if (showingIllustration) {
@@ -132,11 +166,16 @@
       entering.clear()
       return
     }
-    go(advance(bundle, reader))
+    const next = advance(bundle, reader)
+    const turns = next !== null && (next.position.chapter !== reader.position.chapter || next.position.page !== reader.position.page)
+    if (turns && !confirmTurn()) return
+    go(next)
   }
 
   function onBack() {
-    go(back(bundle, reader))
+    const previous = back(bundle, reader)
+    if (previous && !confirmTurn()) return
+    go(previous)
   }
 
   /** Go to a page from the menu. Pages already read are shown fully revealed. */
@@ -180,9 +219,10 @@
   onDestroy(() => ('highlights' in CSS ? CSS.highlights.delete('tome-highlight') : undefined))
 
   // Auto mode: advance on a fixed timer, restarted by anything that changes what's on screen.
-  // Paused while the menu or references are open.
+  // Paused while the menu or references are open, and while narration is in progress, even
+  // silently: a line's length is a good guide to how long its text takes to read.
   $effect(() => {
-    if (!progress.settings.auto_advance || menuOpen || panelOpen) return
+    if (!progress.settings.auto_advance || menuOpen || panelOpen || narrating) return
     void reader
     void entering.size
     void narrowView
@@ -322,6 +362,10 @@
       </footer>
     </div>
   </div>
+
+  {#if turnNotice}
+    <p class="tome-toast" role="status">Narration is still playing — press again to turn the page.</p>
+  {/if}
 
   {#if pendingHighlight}
     <button

@@ -103,7 +103,7 @@ struct ChapterParser<'a> {
     next_group: usize,
 }
 
-const LEAF_DIRECTIVES: &str = "music, ambient, sfx, illustration, paper, pagebreak";
+const LEAF_DIRECTIVES: &str = "music, ambient, sfx, voice, illustration, paper, pagebreak";
 const CONTAINER_DIRECTIVES: &str = "reveal, style, fx";
 pub const ENTRANCE_EFFECTS: &[&str] = &["fade", "slide", "typewriter"];
 
@@ -277,7 +277,7 @@ impl ChapterParser<'_> {
                     None => self.error(line, "`::paper` needs the name of a paper from the theme, like `::paper{letter}`"),
                 }
             }
-            "music" | "ambient" | "sfx" => {
+            "music" | "ambient" | "sfx" | "voice" => {
                 if let Some(cue) = self.cue(name, attrs, line) {
                     self.items.push(Item::Cue { cue, line });
                 }
@@ -311,7 +311,7 @@ impl ChapterParser<'_> {
     fn cue(&mut self, name: &str, attrs: &Attrs, line: usize) -> Option<Cue> {
         let stop = attrs.has_word("stop");
         let allowed: &[&str] = match (name, stop) {
-            ("sfx", _) => &["volume", "delay"],
+            ("sfx" | "voice", _) => &["volume", "delay"],
             (_, true) => &["fade", "delay", "id"],
             _ => &["volume", "fade", "delay", "id"],
         };
@@ -329,7 +329,10 @@ impl ChapterParser<'_> {
             return Some(Cue::AmbientStop { id, fade_ms, delay_ms });
         }
         if stop {
-            self.error(line, "sound effects play once and can't be stopped");
+            self.error(line, match name {
+                "voice" => "narration stops by itself when the page turns; there's no `::voice{stop}`",
+                _ => "sound effects play once and can't be stopped",
+            });
             return None;
         }
 
@@ -351,6 +354,7 @@ impl ChapterParser<'_> {
                 let id = id.rsplit('/').next().unwrap_or(&id).split('.').next().unwrap_or(&id).to_string();
                 Cue::Ambient { id, src, volume, fade_ms, delay_ms }
             }
+            "voice" => Cue::Voice { src, volume, delay_ms },
             _ => Cue::Sfx { src, volume, delay_ms },
         })
     }
@@ -573,7 +577,7 @@ mod tests {
 
     fn parse(source: &str) -> (Option<ParsedChapter>, Diagnostics) {
         let dir = tempfile::tempdir().unwrap();
-        for file in ["assets/audio/harbour.ogg", "assets/audio/rain.ogg", "assets/audio/bell.ogg", "assets/images/bridge.png"] {
+        for file in ["assets/audio/harbour.ogg", "assets/audio/rain.ogg", "assets/audio/bell.ogg", "assets/voice/line-1.ogg", "assets/images/bridge.png"] {
             let path = dir.path().join(file);
             fs::create_dir_all(path.parent().unwrap()).unwrap();
             fs::write(path, file).unwrap();
@@ -610,7 +614,7 @@ mod tests {
 
     #[test]
     fn parses_cues_breaks_and_illustrations_in_order() {
-        let source = "# T\n\n::music{harbour volume=0.8 fade=2}\n::ambient{rain}\nOne.\n\n::pagebreak\n::illustration{bridge alt=\"A bridge\"}\n::sfx{bell delay=1.5}\nTwo.\n\n::ambient{stop}\n::music{stop fade=0}\n::illustration{none}\nThree.\n";
+        let source = "# T\n\n::music{harbour volume=0.8 fade=2}\n::ambient{rain}\nOne.\n\n::pagebreak\n::illustration{bridge alt=\"A bridge\"}\n::sfx{bell delay=1.5}\n::voice{line-1 delay=0.5}\nTwo.\n\n::ambient{stop}\n::music{stop fade=0}\n::illustration{none}\nThree.\n";
         let (chapter, diagnostics) = parse(source);
         assert!(diagnostics.items.is_empty(), "{diagnostics:?}");
         let kinds: Vec<String> = chapter
@@ -625,6 +629,7 @@ mod tests {
                     Cue::Sfx { delay_ms, .. } => format!("sfx {delay_ms:?}"),
                     Cue::MusicStop { fade_ms, .. } => format!("music stop {fade_ms:?}"),
                     Cue::AmbientStop { id, .. } => format!("ambient stop {id}"),
+                    Cue::Voice { delay_ms, .. } => format!("voice {delay_ms:?}"),
                 },
                 Item::PageBreak => "break".into(),
                 Item::Illustration { image, .. } => format!("illustration {}", image.as_ref().map_or("none", |i| i.alt.as_str())),
@@ -640,6 +645,7 @@ mod tests {
                 "break",
                 "illustration A bridge",
                 "sfx Some(1500)",
+                "voice Some(500)",
                 "block Two.",
                 "ambient stop *",
                 "music stop Some(0)",

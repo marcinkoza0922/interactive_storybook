@@ -7,6 +7,7 @@ The ferry came in late, as it always did in the weeks before the storms, and Wre
 
 She had a single bag, a letter folded into her coat, and no idea where she would sleep.
 
+::voice{dockmaster}
 The dockmaster looked her over once and returned to his ledger. "If you're waiting for someone," he said, ":fx[they're not coming. Nobody meets the evening boat.]{wave}"
 
 ::pagebreak
@@ -14,6 +15,7 @@ The dockmaster looked her over once and returned to his ledger. "If you're waiti
 ::paper{letter}
 ::illustration{plate-candle alt="A single lit candle on a bare table, a folded note beside it"}
 ::ambient{stop sea fade=3}
+::voice{the-address}
 She found the address on the letter at the end of a crooked lane: a narrow house with its shutters nailed closed. The door, when she tried it, swung open at a touch.
 
 :::reveal{effect=slide}
@@ -30,6 +32,7 @@ Beside it, in handwriting she knew better than her own, a note:
 :::
 
 :::reveal{effect=typewriter delay=0.3}
+::voice{the-note}
 :style[You came after all.]{handwriting}
 :::
 

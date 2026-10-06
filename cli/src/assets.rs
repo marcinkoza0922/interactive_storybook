@@ -33,7 +33,7 @@ impl AssetKind {
 
     fn folders(self) -> &'static [&'static str] {
         match self {
-            AssetKind::Audio => &["audio"],
+            AssetKind::Audio => &["audio", "voice"],
             // Video posters usually sit next to their videos.
             AssetKind::Image => &["images", "video"],
             AssetKind::Media => &["images", "video"],

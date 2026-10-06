@@ -13,6 +13,7 @@ export const AUDIO_CHANNELS: { channel: AudioChannelName; label: string }[] = [
   { channel: 'music', label: 'Music' },
   { channel: 'ambience', label: 'Ambience' },
   { channel: 'sfx', label: 'Sound effects' },
+  { channel: 'voice', label: 'Narration' },
 ]
 
 /** Reflect reader settings on the root element, where the runtime CSS and themes read them. */

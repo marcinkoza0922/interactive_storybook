@@ -8,9 +8,11 @@ header_image_alt = ""
 ::music{keeper fade=2.5}
 The keeper was younger than she expected, with ink on his fingers and a face that gave away nothing at all.
 
+::voice{the-daughter}
 "You'll be the daughter," he said. It was not a question.
 
 :::reveal{effect=typewriter}
+::voice{which-daughter}
 "Which daughter?"
 :::
 

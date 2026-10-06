@@ -14,7 +14,7 @@
   import { applyAudioSettings, applyDocumentSettings } from './lib/settings/apply'
   import { Progress } from './lib/state/progress.svelte'
   import { LocalStorageAdapter } from './lib/storage/adapter'
-  import { defaultSettings, readSave, resolvePosition, type PageRef } from './lib/storage/save'
+  import { defaultSettings, narrationAudible, readSave, resolvePosition, type PageRef } from './lib/storage/save'
   import { effectiveTheme } from './lib/theme/theme'
 
   const storage = new LocalStorageAdapter()
@@ -31,6 +31,8 @@
   let screen = $state<Screen>({ kind: 'loading' })
   let engine = $state.raw<WebAudioEngine | null>(null)
   let director: AudioDirector | null = null
+  /** A line of narration is in progress or queued, heard or passing silently. */
+  let narrating = $state(false)
   /** Landing music waits for the first interaction, which browsers require before audio. */
   let interacted = false
   let landingMusicPlaying = false
@@ -112,7 +114,10 @@
       engine.setMusic(null, 1000)
       landingMusicPlaying = false
     }
-    director = new AudioDirector(bundle, engine)
+    director = new AudioDirector(bundle, engine, {
+      narrationEnabled: () => narrationAudible(progress.settings),
+      onNarrationChange: (value) => (narrating = value),
+    })
     director.update(initial, 'enter')
     screen = { kind: 'reading', bundle, progress, initial }
   }
@@ -131,6 +136,7 @@
   function exit(bundle: Bundle, progress: Progress) {
     director?.stop()
     director = null
+    narrating = false
     screen = { kind: 'landing', bundle, progress }
     playLandingMusic()
   }
@@ -171,6 +177,8 @@
   <Reader
     {bundle}
     {progress}
+    {narrating}
+    narrationAudible={narrationAudible(progress.settings)}
     initial={screen.initial}
     {assetUrl}
     onchange={(reader, change) => director?.update(reader, change)}

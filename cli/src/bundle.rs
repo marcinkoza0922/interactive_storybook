@@ -129,6 +129,14 @@ pub enum Cue {
         #[serde(skip_serializing_if = "Option::is_none")]
         delay_ms: Option<u64>,
     },
+    /// A line of narration, queued behind any line already playing on the page.
+    Voice {
+        src: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        volume: Option<f64>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        delay_ms: Option<u64>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize)]
