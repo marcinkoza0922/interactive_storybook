@@ -24,7 +24,7 @@ interface AmbientVoice {
 export class WebAudioEngine implements AudioEngine {
   private context = new AudioContext()
   private master = this.context.createGain()
-  private channels: Record<Channel, GainNode>
+  private channels: Record<Exclude<Channel, 'master'>, GainNode>
   private music: MusicVoice | null = null
   private ambient = new Map<string, AmbientVoice>()
   private buffers = new Map<string, Promise<AudioBuffer | null>>()
@@ -127,7 +127,8 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   setChannelVolume(channel: Channel, volume: number): void {
-    this.ramp(this.channels[channel].gain, volume, 100)
+    const gain = channel === 'master' ? this.master : this.channels[channel]
+    this.ramp(gain.gain, volume, 100)
   }
 
   private channel(): GainNode {

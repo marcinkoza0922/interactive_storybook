@@ -266,14 +266,6 @@
                   "src": "audio/bell.ogg"
                 }
               ]
-            },
-            {
-              "id": "b18",
-              "html": "<p><em>End of the sample.</em></p>",
-              "reveal": {
-                "step": 2,
-                "effect": "fade"
-              }
             }
           ],
           "references": [
@@ -281,6 +273,59 @@
           ]
         }
       ]
+    },
+    {
+      "id": "the-tide",
+      "title": "The Tide",
+      "content_hash": "dev-the-tide-1",
+      "pages": [
+        {
+          "blocks": [
+            {
+              "id": "b19",
+              "html": "<p>By morning the storms had come, exactly as the ferryman had promised, and the evening boat did not run for a week.</p>"
+            },
+            {
+              "id": "b20",
+              "html": "<p>Wren did not mind. She had stopped counting.</p>"
+            },
+            {
+              "id": "b21",
+              "html": "<p><em>End of the sample.</em></p>",
+              "reveal": {
+                "step": 1,
+                "effect": "fade"
+              }
+            }
+          ],
+          "references": [
+            "wren"
+          ]
+        }
+      ]
+    }
+  ],
+  "contents": [
+    {
+      "kind": "heading",
+      "title": "Part One"
+    },
+    {
+      "kind": "chapter",
+      "id": "the-harbour"
+    },
+    {
+      "kind": "chapter",
+      "id": "the-keeper"
+    },
+    {
+      "kind": "heading",
+      "title": "Part Two"
+    },
+    {
+      "kind": "chapter",
+      "id": "the-tide",
+      "title": "The Tide (Coda)"
     }
   ],
   "references": [

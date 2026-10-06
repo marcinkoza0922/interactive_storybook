@@ -1,6 +1,6 @@
 import type { Voice } from './state'
 
-export type Channel = 'music' | 'ambience' | 'sfx'
+export type Channel = 'master' | 'music' | 'ambience' | 'sfx'
 
 /**
  * Plays sound. Deliberately dumb: the director decides what should be heard and when;

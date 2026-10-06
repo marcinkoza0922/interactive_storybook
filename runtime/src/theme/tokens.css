@@ -12,6 +12,8 @@
   --tome-rule: #d9cfbe;
   --tome-sidebar-bg: #efe8da;
   --tome-illustration-bg: #e9e2d4;
+  --tome-highlight-bg: rgb(222 186 92 / 0.45);
+  --tome-menu-bg: #f8f4ec;
 
   /* Typography */
   --tome-font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;

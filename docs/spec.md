@@ -311,7 +311,7 @@ Per-character effects (wave, tremble) split text into spans for rendering; the r
 
 There is **one "advance" action**. Each press reveals the next step; when the page is fully revealed, the same action turns the page. If an animation is in progress, advance completes it instantly rather than skipping further.
 
-**Auto mode** (optional, off by default): advance fires on a fixed timer, regardless of text length. Deliberately simple.
+**Auto mode** (optional, off by default): advance fires on a fixed timer, regardless of text length. Deliberately simple. Any manual advance restarts the timer; it pauses while the menu or references are open.
 
 ### 8.4 Special text
 
@@ -387,7 +387,8 @@ All persistence goes through a storage-adapter interface so that a remote/sync b
 
 - Saves reference stable chapter IDs, never chapter numbers.
 - MVP: if a chapter's content hash changed since the save, the reader's position **resets to the start of that chapter**. Bookmarks fall back to chapter start likewise.
-- Highlights whose snippet no longer matches are hidden but retained in the save data.
+- Highlights in a chapter whose content changed, or whose text no longer matches, are hidden but retained in the save data.
+- Highlights are painted with the CSS Custom Highlight API, so the page DOM is never modified; per-character effects have already restructured it.
 - Post-MVP: robust re-anchoring of bookmarks/highlights, with orphans surfaced to the reader.
 
 ---
@@ -414,7 +415,9 @@ Text is semantic HTML; all controls are keyboard- and screen-reader-accessible.
 |---|---|---|---|---|
 | Advance | → / Space / Enter | Click (advance zone) | Tap / swipe left | A |
 | Back | ← / Backspace | Click (back zone) | Swipe right | B |
-| Menu | Esc | Corner button | Corner button | Start |
+| Menu | Esc | Menu button (status bar) | Menu button (status bar) | Start |
+| Bookmark page | B | Menu → Bookmarks | Menu → Bookmarks | — |
+| Highlight selection | H | Highlight button | Highlight button | — |
 | Toggle reference sidebar | R (proposed) | Sidebar handle | Sidebar handle | Y (proposed) |
 | Toggle text/illustration (narrow) | I (proposed) | Toggle button | Toggle button | X (proposed) |
 
@@ -422,11 +425,11 @@ For RTL books, swipe and arrow directions mirror (future, §14).
 
 **Navigation semantics:** arriving via *advance* is "forward"; via *back* is "backward". A jump (chapter list, bookmark) to a page the reader has **not** seen behaves as forward; to a page they **have** seen behaves as backward (§6.3).
 
-**Menu:** Resume · Chapters · Bookmarks · Highlights · References · Settings. Opened from a corner button or Esc.
+**Menu:** Resume · Chapters · Bookmarks · Highlights · References · Settings · Title screen. A modal dialog opened with Esc or the Menu button in the status bar; Esc closes it. Leaving the book goes through Title screen, since Esc now opens the menu.
 
 ### 13.1 Chapter index
 
-The chapter list works like the contents page of a paperback: all chapter titles are shown, read or not. It is **generated automatically** from the manuscript into `contents.toml`, which the author may then edit by hand (rename entries, hide entries, add part/section headings). Once the file exists, the CLI never overwrites it; `tome check` warns when it is out of sync with the manuscript (missing or unknown chapter IDs), and a `tome contents --regenerate` command (name provisional) rebuilds it on request.
+The chapter list works like the contents page of a paperback: all chapter titles are shown, read or not. The bundle carries it as `contents` (chapter entries with optional title overrides, plus headings); without it the runtime lists every chapter in order. It is **generated automatically** from the manuscript into `contents.toml`, which the author may then edit by hand (rename entries, hide entries, add part/section headings). Once the file exists, the CLI never overwrites it; `tome check` warns when it is out of sync with the manuscript (missing or unknown chapter IDs), and a `tome contents --regenerate` command (name provisional) rebuilds it on request.
 
 ---
 

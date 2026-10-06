@@ -10,8 +10,14 @@ export interface Bundle {
   audio?: AudioConfig
   illustrations?: IllustrationConfig
   chapters: Chapter[]
+  /** The chapter index as the author arranged it (from contents.toml). Absent: every chapter, in order. */
+  contents?: ContentsEntry[]
   references?: Reference[]
 }
+
+export type ContentsEntry =
+  | { kind: 'chapter'; id: string; /** Overrides the chapter title in the index. */ title?: string }
+  | { kind: 'heading'; title: string }
 
 export interface AudioConfig {
   /** Delay before restoring a page's music and ambience after navigating back to it. */

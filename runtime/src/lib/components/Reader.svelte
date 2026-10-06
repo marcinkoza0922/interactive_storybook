@@ -3,24 +3,26 @@
   import { MediaQuery, SvelteSet } from 'svelte/reactivity'
   import type { Bundle } from '../bundle/types'
   import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
-  import { advance, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
+  import { anchorSelection, highlightRanges, type HighlightAnchor } from '../highlights/anchor'
+  import { advance, arriveBackward, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
+  import type { Progress } from '../state/progress.svelte'
+  import { furthestIndex, isHighlightCurrent } from '../storage/save'
+  import Menu from './Menu.svelte'
   import PageView from './PageView.svelte'
   import ReferencePanel from './ReferencePanel.svelte'
 
   interface Props {
     bundle: Bundle
     initial: ReaderState
-    /** Index of the furthest chapter reached; gates references. */
-    furthestChapter: number
+    progress: Progress
     assetUrl: (src: string) => string
-    onpositionchange: (position: Position) => void
     /** Every navigation, including reveal steps; drives audio. */
     onchange: (reader: ReaderState, change: 'turn' | 'reveal') => void
     onexit: () => void
   }
 
-  let { bundle, initial, furthestChapter, assetUrl, onpositionchange, onchange, onexit }: Props = $props()
+  let { bundle, initial, progress, assetUrl, onchange, onexit }: Props = $props()
 
   let reader = $state(untrack(() => initial))
   /** Blocks whose entrance animation is still running. */
@@ -30,6 +32,9 @@
 
   let panelOpen = $state(false)
   let selectedReference = $state<string | null>(null)
+  let menuOpen = $state(false)
+  /** A text selection that can be turned into a highlight, and where to offer it. */
+  let pendingHighlight = $state<{ anchor: HighlightAnchor; x: number; y: number } | null>(null)
 
   /** Wide, landscape viewports show the illustration track as a facing page. */
   const wide = new MediaQuery('(min-width: 60rem) and (min-aspect-ratio: 5/4)')
@@ -45,8 +50,15 @@
   const illustration = $derived(track[reader.position.chapter][reader.position.page])
   const layout = $derived(illustration && wide.current ? 'spread' : 'single')
   const showingIllustration = $derived(illustration !== null && !wide.current && narrowView === 'illustration')
-  const references = $derived(pageReferences(bundle, page, furthestChapter))
-  const selected = $derived(selectedReference ? referenceEntry(bundle, selectedReference, furthestChapter) : null)
+  const unlocked = $derived(progress.unlockedChapter)
+  const references = $derived(pageReferences(bundle, page, unlocked))
+  const selected = $derived(selectedReference ? referenceEntry(bundle, selectedReference, unlocked) : null)
+  const bookmarked = $derived(progress.bookmarkAt(reader.position) !== undefined)
+  const pageHighlights = $derived(
+    progress.save.highlights.filter(
+      (h) => h.chapter_id === chapter.id && h.page === reader.position.page && isHighlightCurrent(bundle, h),
+    ),
+  )
 
   /**
    * Arriving forward on a page that introduces a new track illustration lingers on it
@@ -93,7 +105,8 @@
 
     if (turned) {
       arrive(next)
-      onpositionchange(next.position)
+      pendingHighlight = null
+      progress.setPosition(next.position)
       scroller.scrollTop = 0
       return
     }
@@ -126,6 +139,57 @@
     go(back(bundle, reader))
   }
 
+  /** Go to a page from the menu. Pages already read are shown fully revealed. */
+  function jump(position: Position) {
+    menuOpen = false
+    if (position.chapter === reader.position.chapter && position.page === reader.position.page) return
+    const seen = position.chapter <= furthestIndex(bundle, progress.save)
+    go(seen ? arriveBackward(bundle, position) : { position, revealed: 0, direction: 'forward' })
+  }
+
+  function createHighlight() {
+    if (!pendingHighlight) return
+    progress.addHighlight(reader.position, pendingHighlight.anchor)
+    document.getSelection()?.removeAllRanges()
+    pendingHighlight = null
+  }
+
+  function onselectionchange() {
+    const article = scroller?.querySelector('.tome-page')
+    const selection = document.getSelection()
+    const anchor = article && !menuOpen ? anchorSelection(article, selection) : null
+    if (!anchor) {
+      pendingHighlight = null
+      return
+    }
+    const rect = selection!.getRangeAt(0).getBoundingClientRect()
+    const x = Math.min(Math.max(rect.left + rect.width / 2, 64), window.innerWidth - 64)
+    pendingHighlight = { anchor, x, y: Math.min(rect.bottom + 8, window.innerHeight - 48) }
+  }
+
+  // Paint saved highlights on the current page. CSS Custom Highlights mark text without
+  // touching the DOM, which per-character effects have already restructured.
+  $effect(() => {
+    const highlights = pageHighlights
+    void page
+    if (!('highlights' in CSS)) return
+    const article = scroller.querySelector('.tome-page')
+    const ranges = article ? highlights.flatMap((h) => highlightRanges(article, h)) : []
+    CSS.highlights.set('tome-highlight', new Highlight(...ranges))
+  })
+  onDestroy(() => ('highlights' in CSS ? CSS.highlights.delete('tome-highlight') : undefined))
+
+  // Auto mode: advance on a fixed timer, restarted by anything that changes what's on screen.
+  // Paused while the menu or references are open.
+  $effect(() => {
+    if (!progress.settings.auto_advance || menuOpen || panelOpen) return
+    void reader
+    void entering.size
+    void narrowView
+    const timer = setTimeout(onAdvance, progress.settings.auto_interval_s * 1000)
+    return () => clearTimeout(timer)
+  })
+
   async function setPanelOpen(open: boolean) {
     panelOpen = open
     // An open entry survives page turns, but closing the panel returns it to the page's list.
@@ -142,6 +206,8 @@
   }
 
   function onkeydown(event: KeyboardEvent) {
+    // The menu is a modal dialog: it handles its own keys, including Esc to close.
+    if (menuOpen) return
     if (event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented) return
     // Let focused controls handle their own activation keys.
     const onControl = (event.target as Element | null)?.closest('button, a, input, textarea, select')
@@ -167,9 +233,17 @@
       case 'I':
         if (illustration && !wide.current) toggleIllustration()
         break
+      case 'b':
+      case 'B':
+        progress.toggleBookmark(reader.position)
+        break
+      case 'h':
+      case 'H':
+        createHighlight()
+        break
       case 'Escape':
         if (panelOpen) setPanelOpen(false)
-        else onexit()
+        else menuOpen = true
         break
       default:
         return
@@ -195,6 +269,7 @@
 </script>
 
 <svelte:window {onkeydown} />
+<svelte:document {onselectionchange} />
 
 <div class="tome-reading" data-layout={layout}>
   <!-- Keyboard input is handled at the window level; clicking is a pointer convenience. -->
@@ -223,7 +298,9 @@
       </main>
 
       <footer class="tome-status">
-        <span aria-live="polite">{chapter.title}</span>
+        <span aria-live="polite">
+          {chapter.title}{#if bookmarked}<span class="tome-status-bookmark">{' · Bookmarked'}</span>{/if}
+        </span>
         <span class="tome-status-actions">
           {#if illustration && layout === 'single'}
             <button class="tome-link-button" onclick={toggleIllustration}>
@@ -239,11 +316,39 @@
           >
             References{references.length > 0 ? ` · ${references.length}` : ''}
           </button>
+          <button class="tome-link-button" onclick={() => (menuOpen = true)} aria-haspopup="dialog">Menu</button>
         </span>
         <span>{reader.position.page + 1} / {chapter.pages.length}</span>
       </footer>
     </div>
   </div>
+
+  {#if pendingHighlight}
+    <button
+      class="tome-button tome-button-primary tome-highlight-button"
+      style:left="{pendingHighlight.x}px"
+      style:top="{pendingHighlight.y}px"
+      onpointerdown={(e) => e.preventDefault()}
+      onclick={createHighlight}
+    >
+      Highlight
+    </button>
+  {/if}
+
+  {#if menuOpen}
+    <Menu
+      {bundle}
+      {progress}
+      position={reader.position}
+      onclose={() => (menuOpen = false)}
+      onjump={jump}
+      onreferences={() => {
+        menuOpen = false
+        setPanelOpen(true)
+      }}
+      ontitle={onexit}
+    />
+  {/if}
 
   {#if panelOpen}
     <ReferencePanel
