@@ -18,12 +18,17 @@ See [docs/spec.md](docs/spec.md) for the full specification, and
 
 ## Building
 
-The CLI embeds the runtime, so build the runtime first:
+The CLI embeds the runtime, so the runtime has to be built first. `make` does both, in order
+(it also installs the runtime's packages the first time):
 
 ```sh
-cd runtime && npm install && npm run build && cd ..
-cargo build --release          # produces target/release/tome
+make             # target/release/tome
+make debug       # target/debug/tome
+make test        # all tests
+make preview     # read the sample book with live reload
 ```
+
+By hand: `cd runtime && npm ci && npm run build`, then `cargo build --release`.
 
 Then:
 
