@@ -413,5 +413,94 @@
         }
       ]
     }
-  ]
+  ],
+  "theme": {
+    "tokens": {
+      "font-heading": "'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif"
+    },
+    "fonts": [
+      {
+        "family": "Caveat",
+        "src": "fonts/caveat-400.woff2"
+      }
+    ],
+    "styles": {
+      "handwriting": {
+        "font-family": "Caveat, var(--tome-font-handwriting)",
+        "font-size": "1.5em",
+        "line-height": "1.2"
+      }
+    },
+    "backgrounds": {
+      "landing": {
+        "src": "video/fog.webm",
+        "poster": "video/fog.jpg",
+        "opacity": 0.45
+      }
+    },
+    "decoration": {
+      "page_texture": "images/paper.svg",
+      "chapter_ornament": "images/ornament.svg",
+      "drop_caps": true
+    },
+    "landing": {
+      "cover": {
+        "src": "images/plate-harbour.svg",
+        "alt": "A small ferry coming into a grey harbour"
+      },
+      "layout": "split",
+      "music": "audio/keeper.ogg"
+    },
+    "custom_css": "theme/custom.css",
+    "overrides": [
+      {
+        "from": "the-keeper",
+        "tokens": {
+          "page-bg": "#1d2125",
+          "text": "#e6dfd0",
+          "text-muted": "#a49c8c",
+          "accent": "#d9b44a",
+          "accent-contrast": "#1d2125",
+          "rule": "#3a4046",
+          "sidebar-bg": "#23282d",
+          "menu-bg": "#262b30",
+          "illustration-bg": "#15181b",
+          "highlight-bg": "rgb(217 180 74 / 0.35)"
+        },
+        "decoration": {
+          "page_texture": null
+        }
+      },
+      {
+        "from": "the-tide",
+        "tokens": {
+          "page-bg": "#dfe6e9",
+          "text": "#24313a",
+          "text-muted": "#5d6c76",
+          "accent": "#2f6f8f",
+          "accent-contrast": "#f6f9fa",
+          "rule": "#c6d2d8",
+          "sidebar-bg": "#dde5e9",
+          "menu-bg": "#f1f5f7",
+          "illustration-bg": "#d5dfe4",
+          "page-surface": "rgb(246 249 250 / 0.92)",
+          "highlight-bg": "rgb(47 111 143 / 0.25)"
+        },
+        "decoration": {
+          "page_frame": {
+            "src": "images/frame.svg",
+            "slice": 30,
+            "width": "18px"
+          }
+        },
+        "backgrounds": {
+          "reading": {
+            "src": "video/fog.webm",
+            "poster": "video/fog.jpg",
+            "opacity": 0.6
+          }
+        }
+      }
+    ]
+  }
 }

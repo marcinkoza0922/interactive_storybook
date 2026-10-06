@@ -334,13 +334,24 @@ The base theme defines:
 - **UI chrome:** buttons, sidebar, menu, icons.
 - Special-text style definitions.
 
+**Bundle contract.** The compiler turns `theme.toml` into the bundle's `theme`:
+
+- `tokens`: values for any `--tome-*` custom property, named without the prefix (`accent`, `page-bg`, `font-body`, …). Named gradients for the gradient effect are tokens too (`gradient-dawn`), referenced as `var(--tome-gradient-dawn)`.
+- `fonts`: font files (`family`, `src`, optional `weight` / `style`), declared as `@font-face`.
+- `styles`: named special styles as CSS declarations for `[data-tome-style="name"]`.
+- `decoration`: `page_texture`, `page_frame` (`src`, `slice`, `width`, `repeat`, drawn as a border image), `chapter_ornament` (above titles of chapters without their own header art), `drop_caps`.
+- `backgrounds`: `landing` and `reading`, each an image, GIF or video (`kind` inferred from the extension) with optional `poster`, `fit`, `position`, `opacity`.
+- `landing`: `cover`, `title_image`, `layout` (`centered` / `split`), `menu` (`stacked` / `inline`), `music`.
+
+The runtime writes the theme into one generated stylesheet after its own CSS. Values that could escape a declaration (`; { } < >`) are rejected with a warning. Relative `url(...)` values resolve against `book.json`. Landing music starts on the first interaction with the title screen that isn't activating a button, since browsers block audio before a gesture, and fades out when the book's own audio begins.
+
 ### 9.2 Progressive themes
 
-`[[override]] from = "chapter-id"` blocks apply partial theme changes from a chapter onward (e.g. a green accent from chapter 6). Overrides follow the reader's **current position**, so the look matches the part of the story being read. As a general rule, **every chapter-based setting except spoiler gating follows the current chapter**; spoiler gating follows the furthest chapter reached (§5.1). The landing screen uses the theme at the reader's saved position (base theme for a new reader).
+`[[override]] from = "chapter-id"` blocks apply partial theme changes from a chapter onward (e.g. a green accent from chapter 6). Overrides merge per token, style, background and decoration field, in chapter order; `null` clears a background or decoration. Overrides follow the reader's **current position**, so the look matches the part of the story being read. As a general rule, **every chapter-based setting except spoiler gating follows the current chapter**; spoiler gating follows the furthest chapter reached (§5.1). The landing screen uses the theme at the reader's saved position (base theme for a new reader).
 
 ### 9.3 Custom CSS
 
-`theme/custom.css` is loaded after the generated theme. The runtime exposes a **documented, versioned theming contract** — CSS custom properties (`--accent`, `--page-bg`, …) and stable class names — treated as public API under semver. Author CSS should use the color tokens so the reader's accent toggle keeps working. (Utility-class frameworks such as Tailwind are not used in the runtime markup, to keep the contract stable.)
+`theme/custom.css` is loaded after the generated theme. Besides the tokens, the runtime exposes state as attributes for author CSS: `data-chapter` and `data-layout` on `.tome-reading`, and `data-special-text`, `data-accents`, `data-drop-caps`, `data-chapter-ornament` and `data-page-frame` on the root element. The runtime exposes a **documented, versioned theming contract** — CSS custom properties (`--accent`, `--page-bg`, …) and stable class names — treated as public API under semver. Author CSS should use the color tokens so the reader's accent toggle keeps working. (Utility-class frameworks such as Tailwind are not used in the runtime markup, to keep the contract stable.)
 
 ### 9.4 Defaults
 

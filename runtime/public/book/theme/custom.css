@@ -1,0 +1,15 @@
+/* Author CSS for the sample book: loaded after the theme, styled against the tome-* contract. */
+
+.tome-chapter-title {
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+}
+
+.tome-landing-title {
+  letter-spacing: 0.04em;
+}
+
+/* The coda is quieter: a narrower page. */
+.tome-reading[data-chapter='the-tide'] .tome-page {
+  --tome-page-max-width: 32rem;
+}

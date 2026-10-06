@@ -13,6 +13,7 @@ export interface Bundle {
   /** The chapter index as the author arranged it (from contents.toml). Absent: every chapter, in order. */
   contents?: ContentsEntry[]
   references?: Reference[]
+  theme?: Theme
 }
 
 export type ContentsEntry =
@@ -123,4 +124,75 @@ export interface ImageRef {
   /** Relative to the bundle's book.json. */
   src: string
   alt: string
+}
+
+/** Asset paths are relative to book.json. */
+export interface Theme {
+  /**
+   * Values for the runtime's CSS custom properties, named without the `--tome-` prefix,
+   * e.g. `{ "accent": "#8a3b2e", "font-body": "Lora, serif" }`. Named gradients for the
+   * gradient effect are tokens too, e.g. `"gradient-dawn": "linear-gradient(...)"`.
+   */
+  tokens?: Record<string, string>
+  fonts?: FontFile[]
+  /** Named special styles: CSS declarations for `[data-tome-style="<name>"]`. */
+  styles?: Record<string, Record<string, string>>
+  backgrounds?: Backgrounds
+  decoration?: Decoration
+  landing?: LandingTheme
+  /** A stylesheet loaded after everything else. */
+  custom_css?: string
+  /** Partial themes applied from a chapter onward, in order, following the reader's current chapter. */
+  overrides?: ThemeOverride[]
+}
+
+export interface FontFile {
+  family: string
+  src: string
+  weight?: string
+  style?: string
+}
+
+export interface Background {
+  src: string
+  /** Inferred from the extension when absent. */
+  kind?: 'image' | 'animated' | 'video'
+  /** Still frame shown instead of a video or GIF when motion is turned off. */
+  poster?: string
+  fit?: 'cover' | 'contain'
+  position?: string
+  opacity?: number
+}
+
+export interface Backgrounds {
+  landing?: Background | null
+  reading?: Background | null
+}
+
+export interface Decoration {
+  /** Tiled image behind the text. */
+  page_texture?: string | null
+  /** A border image around the page; `slice` in image pixels, `width` as a CSS length. */
+  page_frame?: { src: string; slice: number; width: string; repeat?: 'stretch' | 'round' | 'repeat' } | null
+  /** Shown above chapter titles of chapters without their own header art. */
+  chapter_ornament?: string | null
+  drop_caps?: boolean
+}
+
+export interface LandingTheme {
+  cover?: ImageRef
+  /** Replaces the text title; its alt text should be the title. */
+  title_image?: ImageRef
+  layout?: 'centered' | 'split'
+  menu?: 'stacked' | 'inline'
+  /** Music for the title screen, from the first interaction with it. */
+  music?: string
+}
+
+export interface ThemeOverride {
+  from: string
+  tokens?: Record<string, string>
+  styles?: Record<string, Record<string, string>>
+  backgrounds?: Backgrounds
+  decoration?: Decoration
 }

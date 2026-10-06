@@ -1,16 +1,19 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { MediaQuery } from 'svelte/reactivity'
   import { AudioDirector } from './lib/audio/director'
   import { WebAudioEngine } from './lib/audio/webaudio'
   import { loadBundle } from './lib/bundle/load'
   import type { Bundle } from './lib/bundle/types'
   import Landing from './lib/components/Landing.svelte'
   import Reader from './lib/components/Reader.svelte'
+  import ThemeLayer from './lib/components/ThemeLayer.svelte'
   import { arriveBackward, type ReaderState } from './lib/reader/navigation'
   import { applyAudioSettings, applyDocumentSettings } from './lib/settings/apply'
   import { Progress } from './lib/state/progress.svelte'
   import { LocalStorageAdapter } from './lib/storage/adapter'
   import { defaultSettings, readSave, resolvePosition, type PageRef } from './lib/storage/save'
+  import { effectiveTheme } from './lib/theme/theme'
 
   const storage = new LocalStorageAdapter()
   const bundleUrl = new URL('book/book.json', document.baseURI).href
@@ -24,6 +27,22 @@
   let screen = $state<Screen>({ kind: 'loading' })
   let engine = $state.raw<WebAudioEngine | null>(null)
   let director: AudioDirector | null = null
+  /** Landing music waits for the first interaction, which browsers require before audio. */
+  let interacted = false
+  let landingMusicPlaying = false
+
+  const reducedMotion = new MediaQuery('(prefers-reduced-motion: reduce)')
+  const assetUrl = (src: string) => new URL(src, bundleUrl).href
+
+  /** The theme follows the reader's chapter; the title screen uses the one they'll return to. */
+  const theme = $derived.by(() => {
+    if (screen.kind !== 'landing' && screen.kind !== 'reading') return null
+    const { bundle, progress } = screen
+    const chapter = progress.save.position
+      ? bundle.chapters.findIndex((c) => c.id === progress.save.position!.chapter_id)
+      : -1
+    return effectiveTheme(bundle, chapter === -1 ? null : chapter)
+  })
 
   onMount(async () => {
     try {
@@ -46,10 +65,37 @@
     }
   })
 
-  /** Called from the Begin/Continue click: the user gesture browsers require before audio. */
-  function startReading(bundle: Bundle, progress: Progress, initial: ReaderState) {
+  function audioEngine(): WebAudioEngine {
     engine ??= new WebAudioEngine(bundleUrl)
     engine.unlock()
+    return engine
+  }
+
+  function playLandingMusic() {
+    const music = theme?.landing.music
+    if (!music || landingMusicPlaying) return
+    audioEngine().setMusic({ src: music, volume: 1 }, 1500)
+    landingMusicPlaying = true
+  }
+
+  /** The first key or click on the title screen starts its music, unless it starts the book. */
+  function onLandingInteraction(event: Event) {
+    if (screen.kind !== 'landing' || interacted) return
+    interacted = true
+    // Activating a button begins the book, whose own audio takes over.
+    const onButton = (event.target as Element | null)?.closest?.('button')
+    const activates = !(event instanceof KeyboardEvent) || event.key === 'Enter' || event.key === ' '
+    if (!(onButton && activates)) playLandingMusic()
+  }
+
+  /** Called from the Begin/Continue click: the user gesture browsers require before audio. */
+  function startReading(bundle: Bundle, progress: Progress, initial: ReaderState) {
+    interacted = true
+    const engine = audioEngine()
+    if (landingMusicPlaying) {
+      engine.setMusic(null, 1000)
+      landingMusicPlaying = false
+    }
     director = new AudioDirector(bundle, engine)
     director.update(initial, 'enter')
     screen = { kind: 'reading', bundle, progress, initial }
@@ -70,8 +116,20 @@
     director?.stop()
     director = null
     screen = { kind: 'landing', bundle, progress }
+    playLandingMusic()
   }
 </script>
+
+<svelte:window onpointerdown={onLandingInteraction} onkeydown={onLandingInteraction} />
+
+{#if theme && (screen.kind === 'landing' || screen.kind === 'reading')}
+  <ThemeLayer
+    {theme}
+    screen={screen.kind}
+    motion={screen.progress.settings.special_text && !reducedMotion.current}
+    {assetUrl}
+  />
+{/if}
 
 {#if screen.kind === 'loading'}
   <p class="tome-message">Loading…</p>
@@ -82,6 +140,8 @@
   {@const position = progress.save.position}
   <Landing
     book={bundle.book}
+    theme={theme?.landing ?? {}}
+    {assetUrl}
     canContinue={position !== null}
     oncontinue={() => position && resume(bundle, progress, position)}
     onbegin={() => begin(bundle, progress)}
@@ -92,7 +152,7 @@
     {bundle}
     {progress}
     initial={screen.initial}
-    assetUrl={(src) => new URL(src, bundleUrl).href}
+    {assetUrl}
     onchange={(reader, change) => director?.update(reader, change)}
     onexit={() => exit(bundle, progress)}
   />

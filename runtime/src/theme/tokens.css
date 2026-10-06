@@ -29,6 +29,15 @@
   --tome-page-padding: clamp(1.5rem, 6vw, 4rem);
   --tome-sidebar-width: 20rem;
 
+  /* Decoration (set from the theme's decoration section) */
+  --tome-page-surface: transparent;
+  --tome-page-texture: none;
+  --tome-page-frame: none;
+  --tome-page-frame-width: 0px;
+  --tome-chapter-ornament: none;
+  --tome-chapter-ornament-height: 2.5rem;
+  --tome-drop-cap-size: 3.3em;
+
   /* Motion */
   --tome-reveal-duration: 700ms;
   --tome-reveal-easing: ease-out;

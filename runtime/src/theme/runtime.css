@@ -34,12 +34,65 @@ body {
   text-align: center;
 }
 
+/* Theme backgrounds: behind everything, never interactive. */
+
+.tome-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.tome-backdrop > img,
+.tome-backdrop > video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: var(--tome-backdrop-fit, cover);
+  object-position: var(--tome-backdrop-position, center);
+}
+
 /* Landing */
 
 .tome-landing {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
   margin: auto;
   padding: var(--tome-page-padding);
   text-align: center;
+}
+
+.tome-landing-cover {
+  max-width: min(100%, 22rem);
+  max-height: 45vh;
+  object-fit: contain;
+  box-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 0.25);
+}
+
+/* Split: cover beside the title and menu where there's room. */
+@media (min-width: 48rem) {
+  .tome-landing[data-layout='split'] {
+    flex-direction: row;
+    gap: clamp(2rem, 6vw, 5rem);
+    text-align: start;
+  }
+
+  .tome-landing[data-layout='split'] .tome-landing-cover {
+    max-height: 70vh;
+  }
+
+  .tome-landing[data-layout='split'] .tome-landing-menu {
+    align-items: flex-start;
+  }
+}
+
+.tome-landing-title-image {
+  display: block;
+  max-width: min(100%, 28rem);
+  max-height: 10rem;
+  margin-inline: auto;
 }
 
 .tome-landing-title {
@@ -61,6 +114,16 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 0.75rem;
+}
+
+.tome-landing-menu[data-arrangement='inline'] {
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.tome-landing-menu[data-arrangement='inline'] .tome-button {
+  min-width: 0;
 }
 
 .tome-button {
@@ -188,12 +251,17 @@ body {
   flex: 1;
   overflow-y: auto;
   cursor: default;
+  background-image: var(--tome-page-texture);
 }
 
 .tome-page {
   max-width: var(--tome-page-max-width);
   margin-inline: auto;
   padding: var(--tome-page-padding);
+  border: var(--tome-page-frame-width) solid transparent;
+  border-image: var(--tome-page-frame);
+  background: var(--tome-page-surface);
+  background-clip: padding-box;
   font-family: var(--tome-reader-font, var(--tome-font-body));
   font-size: calc(var(--tome-font-size-body) * var(--tome-font-scale, 1));
   line-height: var(--tome-line-height);
@@ -210,6 +278,33 @@ body {
 .tome-block :where(p) {
   margin: 0;
   text-indent: var(--tome-paragraph-indent);
+}
+
+/* A framed page needs room around it. */
+:root[data-page-frame='on'] .tome-page {
+  margin-block: clamp(1rem, 4vh, 2.5rem);
+}
+
+/* A theme ornament above chapter titles, unless the chapter has its own header art. */
+:root[data-chapter-ornament='on'] .tome-chapter-title::before {
+  content: '';
+  display: block;
+  height: var(--tome-chapter-ornament-height);
+  margin-block-end: 1.25rem;
+  background: var(--tome-chapter-ornament) center / contain no-repeat;
+}
+
+:root[data-chapter-ornament='on'] .tome-chapter-image + .tome-chapter-title::before {
+  display: none;
+}
+
+:root[data-drop-caps='on'] .tome-chapter-title + .tome-block :where(p:first-of-type)::first-letter {
+  float: inline-start;
+  padding-inline-end: 0.08em;
+  font-family: var(--tome-font-heading);
+  font-size: var(--tome-drop-cap-size);
+  line-height: 0.8;
+  color: var(--tome-accent);
 }
 
 /* The opening paragraph of a chapter isn't indented. */
