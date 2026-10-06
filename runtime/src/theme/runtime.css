@@ -1,0 +1,154 @@
+/*
+ * Runtime layout and default styling. Every color, font and timing comes from a token in
+ * tokens.css. The tome-* class names are part of the public theming contract.
+ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--tome-page-bg);
+  color: var(--tome-text);
+  font-family: var(--tome-font-body);
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+.tome-message {
+  margin: auto;
+  padding: var(--tome-page-padding);
+  font-family: var(--tome-font-ui);
+  color: var(--tome-text-muted);
+  text-align: center;
+}
+
+/* Landing */
+
+.tome-landing {
+  margin: auto;
+  padding: var(--tome-page-padding);
+  text-align: center;
+}
+
+.tome-landing-title {
+  margin: 0;
+  font-family: var(--tome-font-heading);
+  font-size: clamp(2.2rem, 7vw, 3.5rem);
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+
+.tome-landing-author {
+  margin-block: 0.75rem 2.5rem;
+  color: var(--tome-text-muted);
+  font-style: italic;
+}
+
+.tome-landing-menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tome-button {
+  min-width: 14rem;
+  padding: 0.65rem 1.25rem;
+  border: 1px solid var(--tome-accent);
+  border-radius: 2px;
+  background: transparent;
+  color: var(--tome-accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tome-button-primary {
+  background: var(--tome-accent);
+  color: var(--tome-accent-contrast);
+}
+
+.tome-button:focus-visible {
+  outline: 2px solid var(--tome-accent);
+  outline-offset: 3px;
+}
+
+/* Reader: the page scrolls when its content doesn't fit the viewport. */
+
+.tome-reader {
+  flex: 1;
+  overflow-y: auto;
+  cursor: default;
+}
+
+.tome-page {
+  max-width: var(--tome-page-max-width);
+  margin-inline: auto;
+  padding: var(--tome-page-padding);
+  font-size: var(--tome-font-size-body);
+  line-height: var(--tome-line-height);
+}
+
+.tome-chapter-title {
+  margin-block: 2rem 2.5rem;
+  font-family: var(--tome-font-heading);
+  font-size: 1.6em;
+  font-weight: normal;
+  text-align: center;
+}
+
+.tome-block :where(p) {
+  margin: 0;
+  text-indent: var(--tome-paragraph-indent);
+}
+
+/* The opening paragraph of a chapter isn't indented. */
+.tome-chapter-title + .tome-block :where(p) {
+  text-indent: 0;
+}
+
+/* Hidden steps keep their space so revealed text doesn't shift the page. */
+.tome-hidden {
+  visibility: hidden;
+}
+
+.tome-entering[data-effect='fade'] {
+  animation: tome-fade-in var(--tome-reveal-duration) var(--tome-reveal-easing) both;
+}
+
+@keyframes tome-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Near-instant rather than none, so animationend still fires and advancing stays one press per step. */
+@media (prefers-reduced-motion: reduce) {
+  .tome-entering {
+    animation-duration: 1ms !important;
+  }
+}
+
+.tome-status {
+  display: flex;
+  justify-content: space-between;
+  max-width: var(--tome-page-max-width);
+  width: 100%;
+  margin-inline: auto;
+  padding: 0.5rem var(--tome-page-padding) 1rem;
+  border-top: 1px solid var(--tome-rule);
+  font-family: var(--tome-font-ui);
+  font-size: 0.8rem;
+  color: var(--tome-text-muted);
+}

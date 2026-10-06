@@ -1,0 +1,29 @@
+/*
+ * Default theme tokens. These custom properties are part of the public theming contract:
+ * book themes and author CSS override them, so rename or remove them only in a breaking release.
+ */
+:root {
+  /* Color */
+  --tome-page-bg: #f6f1e7;
+  --tome-text: #2b2620;
+  --tome-text-muted: #7a6f62;
+  --tome-accent: #8a3b2e;
+  --tome-accent-contrast: #fdf8f0;
+  --tome-rule: #d9cfbe;
+
+  /* Typography */
+  --tome-font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
+  --tome-font-heading: var(--tome-font-body);
+  --tome-font-ui: system-ui, sans-serif;
+  --tome-font-size-body: 1.2rem;
+  --tome-line-height: 1.6;
+  --tome-paragraph-indent: 1.5em;
+
+  /* Layout */
+  --tome-page-max-width: 36rem;
+  --tome-page-padding: clamp(1.5rem, 6vw, 4rem);
+
+  /* Motion */
+  --tome-reveal-duration: 700ms;
+  --tome-reveal-easing: ease-out;
+}

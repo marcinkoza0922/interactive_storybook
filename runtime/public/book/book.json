@@ -1,0 +1,138 @@
+{
+  "bundle_schema_version": 1,
+  "book": {
+    "id": "sample-bell",
+    "title": "The Uneven Bell",
+    "author": "A Sample Author",
+    "language": "en"
+  },
+  "chapters": [
+    {
+      "id": "the-harbour",
+      "title": "The Harbour",
+      "content_hash": "dev-the-harbour-1",
+      "pages": [
+        {
+          "blocks": [
+            {
+              "id": "b1",
+              "html": "<p>The ferry came in late, as it always did in the weeks before the storms, and Wren was the last to step off. The harbour smelled of tar and wet rope. Somewhere above the town a bell was ringing, slow and uneven, as though whoever pulled it had forgotten the count.</p>"
+            },
+            {
+              "id": "b2",
+              "html": "<p>She had a single bag, a letter folded into her coat, and no idea where she would sleep.</p>"
+            },
+            {
+              "id": "b3",
+              "html": "<p>The dockmaster looked her over once and returned to his ledger. “If you’re waiting for someone,” he said, “they’re not coming. Nobody meets the evening boat.”</p>"
+            }
+          ]
+        },
+        {
+          "blocks": [
+            {
+              "id": "b4",
+              "html": "<p>She found the address on the letter at the end of a crooked lane: a narrow house with its shutters nailed closed. The door, when she tried it, swung open at a touch.</p>"
+            },
+            {
+              "id": "b5",
+              "html": "<p>Inside, the air was cold and still.</p>",
+              "reveal": {
+                "step": 1,
+                "effect": "fade"
+              }
+            },
+            {
+              "id": "b6",
+              "html": "<p>On the table sat a single candle, freshly lit.</p>",
+              "reveal": {
+                "step": 2,
+                "effect": "fade"
+              }
+            },
+            {
+              "id": "b7",
+              "html": "<p>Beside it, in handwriting she knew better than her own, a note: <em>You came after all.</em></p>",
+              "reveal": {
+                "step": 3,
+                "effect": "fade",
+                "duration_ms": 1400
+              }
+            }
+          ]
+        },
+        {
+          "blocks": [
+            {
+              "id": "b8",
+              "html": "<p>Wren did not sleep that night. She sat with her back to the wall and the candle between her hands, listening to the house settle around her. Every so often the bell rang again, always the same uneven pattern, and every time she counted the strokes and came up with a different number.</p>"
+            },
+            {
+              "id": "b9",
+              "html": "<p>Near dawn she took the letter out and read it again. It was eleven years old. It asked her to come home. It did not say why, and the woman who had written it had been dead for nine of those eleven years.</p>"
+            },
+            {
+              "id": "b10",
+              "html": "<p>When the light came grey through the gaps in the shutters she went out to find the bell.</p>"
+            },
+            {
+              "id": "b11",
+              "html": "<p>It was not hard. The whole town seemed to lean toward it: every lane bent uphill, every roof sloped the same way, as if the place had been built by people who wanted to be sure they could always find their way to the top of the cliff. The lighthouse stood there, white and windowless, and the sound came from inside it.</p>"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "the-keeper",
+      "title": "The Keeper",
+      "content_hash": "dev-the-keeper-1",
+      "pages": [
+        {
+          "blocks": [
+            {
+              "id": "b12",
+              "html": "<p>The keeper was younger than she expected, with ink on his fingers and a face that gave away nothing at all.</p>"
+            },
+            {
+              "id": "b13",
+              "html": "<p>“You’ll be the daughter,” he said. It was not a question.</p>"
+            },
+            {
+              "id": "b14",
+              "html": "<p>“Which daughter?”</p>",
+              "reveal": {
+                "step": 1,
+                "effect": "fade"
+              }
+            },
+            {
+              "id": "b15",
+              "html": "<p>For the first time, something moved behind his eyes.</p>",
+              "reveal": {
+                "step": 2,
+                "effect": "fade"
+              }
+            }
+          ]
+        },
+        {
+          "blocks": [
+            {
+              "id": "b16",
+              "html": "<p>He let her climb the stairs ahead of him. There were a hundred and twelve of them; she counted, because counting was the only thing in this town that seemed to hold still.</p>"
+            },
+            {
+              "id": "b17",
+              "html": "<p>At the top there was no lamp. There was only the bell, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, a coat exactly like her own.</p>"
+            },
+            {
+              "id": "b18",
+              "html": "<p><em>End of the sample.</em></p>"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
