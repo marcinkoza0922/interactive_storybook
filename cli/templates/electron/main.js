@@ -2,7 +2,7 @@
 // served from app://book/: a custom secure origin, so fetch(), localStorage and media seeking
 // behave as they do on the web (they don't from file://).
 
-const { app, BrowserWindow, Menu, protocol, shell } = require('electron')
+const { app, BrowserWindow, ipcMain, Menu, protocol, shell } = require('electron')
 const fs = require('node:fs')
 const path = require('node:path')
 const { Readable } = require('node:stream')
@@ -56,12 +56,35 @@ async function serve(request) {
   return new Response(Readable.toWeb(fs.createReadStream(file)), { headers: { ...headers, 'Content-Length': String(size) } })
 }
 
+// Window preferences live here rather than in the book's saved state, because the window
+// needs them before the page loads.
+const preferencesFile = () => path.join(app.getPath('userData'), 'window.json')
+
+function readPreferences() {
+  try {
+    return JSON.parse(fs.readFileSync(preferencesFile(), 'utf8'))
+  } catch {
+    return {}
+  }
+}
+
+function savePreferences(changes) {
+  try {
+    fs.mkdirSync(path.dirname(preferencesFile()), { recursive: true })
+    fs.writeFileSync(preferencesFile(), JSON.stringify({ ...readPreferences(), ...changes }))
+  } catch (error) {
+    console.error('Could not save window preferences:', error)
+  }
+}
+
 function createWindow() {
   const window = new BrowserWindow({
     width: 1280,
     height: 860,
     minWidth: 360,
     minHeight: 480,
+    // Full screen unless the reader chose a window last time.
+    fullscreen: readPreferences().fullscreen ?? true,
     title: book.title,
     backgroundColor: book.background,
     autoHideMenuBar: true,
@@ -71,6 +94,7 @@ function createWindow() {
       sandbox: true,
       nodeIntegration: false,
       spellcheck: false,
+      preload: path.join(__dirname, 'preload.js'),
       // A desktop book may start its music from a controller press, which browsers don't count
       // as the gesture that unlocks audio.
       autoplayPolicy: 'no-user-gesture-required',
@@ -98,9 +122,29 @@ function createWindow() {
     }
   })
 
+  // Remember the choice however it was made (the setting, F11, the window manager), and keep
+  // the page's setting in step.
+  const fullscreenChanged = (on) => {
+    savePreferences({ fullscreen: on })
+    window.webContents.send('tome:fullscreen', on)
+  }
+  window.on('enter-full-screen', () => fullscreenChanged(true))
+  window.on('leave-full-screen', () => fullscreenChanged(false))
+
   window.loadURL('app://book/index.html')
   return window
 }
+
+/** Only the book's own page may use the desktop bridge. */
+const fromBook = (event) => event.senderFrame?.url.startsWith('app://book/')
+
+ipcMain.handle('tome:is-fullscreen', (event) => fromBook(event) && BrowserWindow.fromWebContents(event.sender)?.isFullScreen())
+ipcMain.on('tome:set-fullscreen', (event, on) => {
+  if (fromBook(event)) BrowserWindow.fromWebContents(event.sender)?.setFullScreen(Boolean(on))
+})
+ipcMain.on('tome:quit', (event) => {
+  if (fromBook(event)) app.quit()
+})
 
 if (!app.requestSingleInstanceLock()) {
   app.quit()

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import type { Bundle } from '../bundle/types'
+  import { desktop } from '../desktop.svelte'
   import type { Position } from '../reader/navigation'
   import { AUDIO_CHANNELS, BODY_FONTS } from '../settings/apply'
   import type { Progress } from '../state/progress.svelte'
@@ -85,6 +86,9 @@
         <button class="tome-menu-item" onclick={onreferences}>References</button>
         <button class="tome-menu-item" onclick={() => show('settings')}>Settings</button>
         <button class="tome-menu-item" onclick={ontitle}>Title screen</button>
+        {#if desktop}
+          <button class="tome-menu-item" onclick={() => desktop?.quit()}>Exit</button>
+        {/if}
       </nav>
     {:else}
       <button class="tome-link-button tome-menu-back" onclick={() => show(typeof view === 'object' ? 'chapters' : 'main')}>
@@ -181,6 +185,20 @@
         {/if}
       {:else if view === 'settings'}
         <h2 class="tome-menu-heading">Settings</h2>
+
+        {#if desktop}
+          <fieldset class="tome-fieldset">
+            <legend>Display</legend>
+            <label class="tome-option">
+              <input
+                type="checkbox"
+                checked={desktop.fullscreen}
+                onchange={(e) => desktop?.setFullscreen(e.currentTarget.checked)}
+              />
+              Full screen (F11)
+            </label>
+          </fieldset>
+        {/if}
 
         <fieldset class="tome-fieldset">
           <legend>Text</legend>

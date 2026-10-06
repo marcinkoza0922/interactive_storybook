@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { BookMeta, LandingTheme } from '../bundle/types'
+  import { desktop } from '../desktop.svelte'
 
   interface Props {
     book: BookMeta
@@ -37,6 +38,9 @@
       {:else}
         <!-- svelte-ignore a11y_autofocus -->
         <button class="tome-button tome-button-primary" onclick={onbegin} autofocus>Begin</button>
+      {/if}
+      {#if desktop}
+        <button class="tome-button" onclick={() => desktop?.quit()}>Exit</button>
       {/if}
     </nav>
   </div>

@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 pub const ELECTRON_VERSION: &str = "44.5.1";
 
 const MAIN_JS: &str = include_str!("../templates/electron/main.js");
+const PRELOAD_JS: &str = include_str!("../templates/electron/preload.js");
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Platform {
@@ -162,6 +163,7 @@ pub fn build(compiled: &Compiled, out: &Path, platform: Platform, arch: Arch, re
     let app = resources.join("app");
     output::write_web(compiled, &app.join("web"))?;
     fs::write(app.join("main.js"), MAIN_JS)?;
+    fs::write(app.join("preload.js"), PRELOAD_JS)?;
     fs::write(app.join("package.json"), package_json(compiled)?)?;
 
     let (from, to) = match platform {
@@ -310,6 +312,7 @@ mod tests {
         assert!(!app.join("electron").exists());
         assert!(!app.join("resources/default_app.asar").exists());
         assert!(app.join("resources/app/main.js").is_file());
+        assert!(app.join("resources/app/preload.js").is_file());
         assert!(app.join("resources/app/web/index.html").is_file());
         assert!(app.join("resources/app/web/book/book.json").is_file());
         assert!(app.join("LICENSE").is_file(), "Electron's licenses ship with the app");
