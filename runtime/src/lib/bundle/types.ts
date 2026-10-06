@@ -23,6 +23,8 @@ export type ContentsEntry =
 export interface AudioConfig {
   /** Delay before restoring a page's music and ambience after navigating back to it. */
   restore_delay_ms?: number
+  /** Music and ambience volume while narration is heard, 0–1 (1: no ducking). */
+  duck_level?: number
 }
 
 export interface IllustrationConfig {

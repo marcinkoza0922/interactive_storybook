@@ -24,6 +24,8 @@ interface AmbientVoice {
 export class WebAudioEngine implements AudioEngine {
   private context = new AudioContext()
   private master = this.context.createGain()
+  /** Lowers music and ambience under narration, separately from the reader's volumes. */
+  private duck = this.context.createGain()
   private channels: Record<Exclude<Channel, 'master'>, GainNode>
   private music: MusicVoice | null = null
   private ambient = new Map<string, AmbientVoice>()
@@ -31,7 +33,13 @@ export class WebAudioEngine implements AudioEngine {
 
   constructor(private baseUrl: string) {
     this.master.connect(this.context.destination)
-    this.channels = { music: this.channel(), ambience: this.channel(), sfx: this.channel(), voice: this.channel() }
+    this.duck.connect(this.master)
+    this.channels = {
+      music: this.channel(this.duck),
+      ambience: this.channel(this.duck),
+      sfx: this.channel(),
+      voice: this.channel(),
+    }
   }
 
   /** Browsers start audio suspended; call this from a user gesture (a click or key press). */
@@ -197,9 +205,13 @@ export class WebAudioEngine implements AudioEngine {
     this.ramp(gain.gain, volume, 100)
   }
 
-  private channel(): GainNode {
+  setDucking(level: number, fadeMs: number): void {
+    this.ramp(this.duck.gain, level, fadeMs)
+  }
+
+  private channel(output: AudioNode = this.master): GainNode {
     const gain = this.context.createGain()
-    gain.connect(this.master)
+    gain.connect(output)
     return gain
   }
 

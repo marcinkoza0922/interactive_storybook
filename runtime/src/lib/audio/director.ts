@@ -9,6 +9,11 @@ export const DEFAULT_MUSIC_FADE_OUT_MS = 2000
 export const DEFAULT_AMBIENT_FADE_MS = 1500
 /** How fast a line of narration fades when a page turn cuts it off. */
 export const NARRATION_CUT_MS = 150
+/** Music and ambience volume under narration, unless the book sets its own. */
+export const DEFAULT_DUCK_LEVEL = 0.35
+/** Ducking dips quickly when a line starts and recovers gently when narration ends. */
+export const DUCK_ATTACK_MS = 300
+export const DUCK_RELEASE_MS = 800
 
 export interface DirectorOptions {
   /**
@@ -53,6 +58,8 @@ export class AudioDirector {
   private narration: VoiceHandle | null = null
   private narrationQueue: NarrationCue[] = []
   private wasNarrating = false
+  private duckLevel: number
+  private ducked = false
 
   constructor(
     private bundle: Bundle,
@@ -61,6 +68,7 @@ export class AudioDirector {
   ) {
     this.endStates = pageEndStates(bundle)
     this.restoreDelayMs = bundle.audio?.restore_delay_ms ?? DEFAULT_RESTORE_DELAY_MS
+    this.duckLevel = bundle.audio?.duck_level ?? DEFAULT_DUCK_LEVEL
   }
 
   /** Whether a line of narration is in progress or queued, heard or not. */
@@ -68,12 +76,21 @@ export class AudioDirector {
     return this.narration !== null || this.narrationQueue.length > 0
   }
 
-  /** Cut narration off and drop the queue. */
-  stopNarration(): void {
+  /**
+   * Cut narration off and drop the queue. `release` brings ducked music back up; a page turn
+   * holds it down until it knows whether the new page starts narrating too.
+   */
+  stopNarration(release = true): void {
     this.narrationQueue = []
     this.narration?.stop(NARRATION_CUT_MS)
     this.narration = null
+    if (release) this.setDucked(false)
     this.notifyNarration()
+  }
+
+  /** Call when the reader's narration settings change: muted narration doesn't duck. */
+  narrationSettingsChanged(): void {
+    if (!this.narrationEnabled()) this.setDucked(false)
   }
 
   update(reader: ReaderState, change: Change): void {
@@ -86,7 +103,7 @@ export class AudioDirector {
       // is already captured in the page states, so dropping them loses nothing lasting.
       // A page turn also cuts off the narration of the page being left.
       this.cancelPending()
-      this.stopNarration()
+      this.stopNarration(false)
 
       if (reader.direction === 'forward') {
         const visible = page.blocks.filter((b) => (b.reveal?.step ?? 0) <= reader.revealed)
@@ -97,6 +114,8 @@ export class AudioDirector {
         const target = this.stateAtEnd(reader.position)
         this.schedule(() => this.reconcile(target), this.restoreDelayMs)
       }
+      // Music comes back up unless the new page started narrating.
+      if (!this.narrating) this.setDucked(false)
     }
 
     this.preloadAround(reader.position)
@@ -159,6 +178,7 @@ export class AudioDirector {
     const cue = this.narrationQueue.shift()
     if (!cue) {
       this.narration = null
+      this.setDucked(false)
       return this.notifyNarration()
     }
 
@@ -170,6 +190,7 @@ export class AudioDirector {
     const begin = () => {
       if (!current()) return
       if (this.narrationEnabled()) {
+        this.setDucked(true)
         phase = this.engine.playVoice(cue.src, cue.volume ?? 1, finished)
       } else {
         let timer: ReturnType<typeof setTimeout> | undefined
@@ -195,6 +216,12 @@ export class AudioDirector {
       begin()
     }
     this.notifyNarration()
+  }
+
+  private setDucked(ducked: boolean): void {
+    if (ducked === this.ducked || this.duckLevel >= 1) return
+    this.ducked = ducked
+    this.engine.setDucking(ducked ? this.duckLevel : 1, ducked ? DUCK_ATTACK_MS : DUCK_RELEASE_MS)
   }
 
   private notifyNarration(): void {

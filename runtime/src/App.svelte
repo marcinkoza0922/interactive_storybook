@@ -78,6 +78,8 @@
     if (screen.kind === 'landing' || screen.kind === 'reading') {
       applyDocumentSettings(document.documentElement, screen.progress.settings)
       if (engine) applyAudioSettings(engine, screen.progress.settings)
+      // Reading the setting here makes muting narration bring ducked music back at once.
+      if (!narrationAudible(screen.progress.settings)) director?.narrationSettingsChanged()
     }
   })
 

@@ -32,6 +32,11 @@ class FakeEngine implements AudioEngine {
       },
     }
   }
+  /** Ducking changes, kept apart from `calls` so other tests needn't mention them. */
+  ducks: string[] = []
+  setDucking(level: number, fadeMs: number) {
+    this.ducks.push(`${level} ${fadeMs}`)
+  }
   /** Each line lasts a second per letter of its name, so tests can tell them apart. */
   voiceDuration(src: string) {
     return Promise.resolve(src.length * 1000)
@@ -291,6 +296,86 @@ describe('narration', () => {
     expect(director.narrating, 'D is passing silently').toBe(true)
     await vi.advanceTimersByTimeAsync(600)
     expect(director.narrating).toBe(false)
+  })
+})
+
+describe('ducking', () => {
+  const voice = (src: string, delay_ms?: number): Cue => ({ kind: 'voice', src, ...(delay_ms ? { delay_ms } : {}) })
+  const music: Cue = { kind: 'music', src: 'M' }
+
+  // p0: music and line A; reveal step 1 has line B after a pause.   p1: line C.   p2: no narration.
+  const narrated = (duck_level?: number): Bundle => ({
+    ...bundle,
+    ...(duck_level !== undefined ? { audio: { duck_level } } : {}),
+    chapters: [
+      {
+        id: 'one',
+        title: 'One',
+        content_hash: 'h',
+        pages: [
+          { blocks: [block('a', [music, voice('A')]), block('b', [voice('B', 500)], 1)] },
+          { blocks: [block('c', [voice('C')])] },
+          { blocks: [block('d', [])] },
+        ],
+      },
+    ],
+  })
+  const at = (page: number): ReaderState => ({ position: { chapter: 0, page }, revealed: 0, direction: 'forward' })
+
+  let engine: FakeEngine
+  let enabled: boolean
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    engine = new FakeEngine()
+    enabled = true
+  })
+  afterEach(() => vi.useRealTimers())
+
+  const director = (book = narrated()) => new AudioDirector(book, engine, { narrationEnabled: () => enabled })
+
+  it('dips music while narration is heard, holding through pauses between lines', () => {
+    const d = director()
+    d.update(at(0), 'enter')
+    expect(engine.ducks).toEqual(['0.35 300'])
+    d.update({ ...at(0), revealed: 1 }, 'reveal')
+    engine.end() // A ends; B waits out its pause: still ducked
+    vi.advanceTimersByTime(500)
+    expect(engine.ducks).toEqual(['0.35 300'])
+    engine.end() // B ends; nothing queued
+    expect(engine.ducks).toEqual(['0.35 300', '1 800'])
+  })
+
+  it('stays down across a page turn onto more narration, and comes back after one without', () => {
+    const d = director()
+    d.update(at(0), 'enter')
+    d.update(at(1), 'turn')
+    expect(engine.ducks, 'no dip and rise between pages').toEqual(['0.35 300'])
+    d.update(at(2), 'turn')
+    expect(engine.ducks).toEqual(['0.35 300', '1 800'])
+  })
+
+  it('never ducks for narration that is off, and releases when the reader mutes it mid-line', async () => {
+    enabled = false
+    const d = director()
+    d.update(at(0), 'enter')
+    await vi.advanceTimersByTimeAsync(5000)
+    expect(engine.ducks).toEqual([])
+
+    enabled = true
+    d.update(at(1), 'turn')
+    expect(engine.ducks).toEqual(['0.35 300'])
+    enabled = false
+    d.narrationSettingsChanged()
+    expect(engine.ducks).toEqual(['0.35 300', '1 800'])
+  })
+
+  it('follows the book: its own level, or none at 1', () => {
+    director(narrated(0.6)).update(at(0), 'enter')
+    expect(engine.ducks).toEqual(['0.6 300'])
+    engine.ducks = []
+    director(narrated(1)).update(at(1), 'enter')
+    expect(engine.ducks).toEqual([])
   })
 })
 

@@ -19,7 +19,8 @@ pub fn create(dir: &Path, title: &str) -> Result<()> {
                  # Pages break automatically before a paragraph that would go over these limits.\n\
                  # max_lines counts paragraphs and line breaks you write, not lines on screen.\n\
                  [pagination]\nmax_words = 220\n\n\
-                 # [audio]\n# restore_delay = 3      # seconds before music returns after going back a page\n\n\
+                 # [audio]\n# restore_delay = 3      # seconds before music returns after going back a page\n\
+                 # ducking = 0.35         # music and ambience volume under narration (1: off)\n\n\
                  # [illustrations]\n# linger = 3            # seconds a new illustration shows on small screens\n"
             ),
         ),

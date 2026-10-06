@@ -34,7 +34,11 @@ pub struct BookMeta {
 
 #[derive(Debug, Serialize)]
 pub struct AudioConfig {
-    pub restore_delay_ms: u64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub restore_delay_ms: Option<u64>,
+    /// Music and ambience volume while narration is heard (1: no ducking).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub duck_level: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

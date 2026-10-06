@@ -97,6 +97,14 @@ before a line once its turn comes. Turning the page cuts the current line off an
 new page's. While a line plays, the first attempt to turn the page asks the reader to press
 again, so they don't skip it by accident. Narration only plays reading forward.
 
+While narration is heard, music and ambience dip so the voice sits on top, and come back
+when it ends. Set how far they dip in `book.toml` (`1` turns it off):
+
+```toml
+[audio]
+ducking = 0.35     # music and ambience volume under narration, 0 to 1
+```
+
 Readers can turn narration down or off under Settings → Sound → Narration. Auto mode still
 follows it when it's off: each line passes silently for as long as its recording, so the
 narration's pace sets the reading pace.

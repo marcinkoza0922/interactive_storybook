@@ -26,7 +26,9 @@ struct BookToml {
 #[serde(deny_unknown_fields)]
 struct AudioToml {
     /// Seconds before a page's music returns after going back to it.
-    restore_delay: f64,
+    restore_delay: Option<f64>,
+    /// Music and ambience volume while narration is heard, 0 to 1 (1 turns ducking off).
+    ducking: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -151,7 +153,17 @@ pub fn compile(root: &Path) -> Compiled {
     let bundle = Bundle {
         bundle_schema_version: bundle::SCHEMA_VERSION,
         book: BookMeta { id, title: book.title, author: book.author, language: book.language.unwrap_or_else(|| "en".into()) },
-        audio: book.audio.map(|a| AudioConfig { restore_delay_ms: seconds_to_ms(a.restore_delay) }),
+        audio: book.audio.map(|a| AudioConfig {
+            restore_delay_ms: a.restore_delay.map(seconds_to_ms),
+            duck_level: a.ducking.filter(|level| {
+                let valid = (0.0..=1.0).contains(level);
+                if !valid {
+                    diagnostics.error(Some(&book_file), None, format!("`ducking` must be between 0 and 1, not {level}")).help =
+                        Some("it's the music and ambience volume under narration; 1 turns ducking off".into());
+                }
+                valid
+            }),
+        }),
         illustrations: book.illustrations.map(|i| IllustrationConfig { linger_ms: seconds_to_ms(i.linger) }),
         chapters: bundle_chapters,
         contents,

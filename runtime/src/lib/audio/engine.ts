@@ -25,4 +25,6 @@ export interface AudioEngine {
   /** Fetch and decode in advance so cues fire on time. */
   preload(srcs: string[]): void
   setChannelVolume(channel: Channel, volume: number): void
+  /** Scale music and ambience (1 = full), on top of the reader's own volumes, e.g. under narration. */
+  setDucking(level: number, fadeMs: number): void
 }
