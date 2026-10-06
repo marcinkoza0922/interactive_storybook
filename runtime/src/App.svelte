@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte'
+  import { onDestroy, onMount } from 'svelte'
   import { MediaQuery } from 'svelte/reactivity'
   import { AudioDirector } from './lib/audio/director'
   import { WebAudioEngine } from './lib/audio/webaudio'
@@ -8,6 +8,8 @@
   import Landing from './lib/components/Landing.svelte'
   import Reader from './lib/components/Reader.svelte'
   import ThemeLayer from './lib/components/ThemeLayer.svelte'
+  import { GamepadPoller } from './lib/gamepad/poller'
+  import { routeGamepadAction } from './lib/gamepad/router'
   import { arriveBackward, type ReaderState } from './lib/reader/navigation'
   import { applyAudioSettings, applyDocumentSettings } from './lib/settings/apply'
   import { Progress } from './lib/state/progress.svelte'
@@ -43,6 +45,13 @@
       : -1
     return effectiveTheme(bundle, chapter === -1 ? null : chapter)
   })
+
+  // Controllers appear to the page only after a button press, which fires gamepadconnected.
+  const gamepads = new GamepadPoller(routeGamepadAction)
+  onMount(() => {
+    if (navigator.getGamepads?.().some((pad) => pad?.connected)) gamepads.start()
+  })
+  onDestroy(() => gamepads.stop())
 
   onMount(async () => {
     try {
@@ -120,7 +129,11 @@
   }
 </script>
 
-<svelte:window onpointerdown={onLandingInteraction} onkeydown={onLandingInteraction} />
+<svelte:window
+  onpointerdown={onLandingInteraction}
+  onkeydown={onLandingInteraction}
+  ongamepadconnected={() => gamepads.start()}
+/>
 
 {#if theme && (screen.kind === 'landing' || screen.kind === 'reading')}
   <ThemeLayer

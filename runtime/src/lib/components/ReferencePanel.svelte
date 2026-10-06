@@ -18,7 +18,7 @@
 <aside {id} class="tome-sidebar" aria-label="References">
   <header class="tome-sidebar-header">
     {#if selected}
-      <button class="tome-link-button" onclick={() => onselect(null)}>← On this page</button>
+      <button class="tome-link-button tome-sidebar-back" onclick={() => onselect(null)}>← On this page</button>
     {:else}
       <h2 class="tome-sidebar-heading">On this page</h2>
     {/if}

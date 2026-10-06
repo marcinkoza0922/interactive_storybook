@@ -429,10 +429,14 @@ Text is semantic HTML; all controls are keyboard- and screen-reader-accessible.
 | Menu | Esc | Menu button (status bar) | Menu button (status bar) | Start |
 | Bookmark page | B | Menu → Bookmarks | Menu → Bookmarks | — |
 | Highlight selection | H | Highlight button | Highlight button | — |
-| Toggle reference sidebar | R (proposed) | Sidebar handle | Sidebar handle | Y (proposed) |
-| Toggle text/illustration (narrow) | I (proposed) | Toggle button | Toggle button | X (proposed) |
+| Toggle reference sidebar | R | References button (status bar) | References button (status bar) | Y |
+| Toggle text/illustration (narrow) | I | Toggle button | Toggle button | X |
+| Turn page | → / ← | — | — | RB / LB |
+| Scroll a long page | ↑ / ↓ | Wheel | Drag | D-pad / left stick up and down |
 
 For RTL books, swipe and arrow directions mirror (future, §14).
+
+**Gamepad.** The W3C standard layout (which Steam Input provides) is polled every animation frame while a controller is connected; the left stick acts as a D-pad, and held directions repeat. In the menu, the references sidebar and on the title screen, the D-pad moves focus (left and right adjust sliders), A activates, and B backs out of a submenu or entry before closing. Start or Back/View opens and closes the menu.
 
 **Navigation semantics:** arriving via *advance* is "forward"; via *back* is "backward". A jump (chapter list, bookmark) to a page the reader has **not** seen behaves as forward; to a page they **have** seen behaves as backward (§6.3).
 
