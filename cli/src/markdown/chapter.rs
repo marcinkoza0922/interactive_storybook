@@ -38,6 +38,8 @@ struct FrontMatter {
     header_image: Option<String>,
     header_image_alt: Option<String>,
     pagination: Option<PageLimits>,
+    /// A named paper from the theme for every page of the chapter.
+    paper: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -70,6 +72,8 @@ pub enum Item {
     PageBreak,
     /// Some(None) clears the track.
     Illustration { image: Option<ImageRef>, line: usize },
+    /// A named paper for the page holding the next block.
+    Paper { name: String, line: usize },
 }
 
 #[derive(Debug)]
@@ -78,6 +82,8 @@ pub struct ParsedChapter {
     pub title: String,
     pub header_image: Option<ImageRef>,
     pub limits: PageLimits,
+    /// The paper for every page without its own, from the front matter.
+    pub paper: Option<(String, usize)>,
     pub items: Vec<Item>,
     pub content_hash: String,
 }
@@ -97,7 +103,7 @@ struct ChapterParser<'a> {
     next_group: usize,
 }
 
-const LEAF_DIRECTIVES: &str = "music, ambient, sfx, illustration, pagebreak";
+const LEAF_DIRECTIVES: &str = "music, ambient, sfx, illustration, paper, pagebreak";
 const CONTAINER_DIRECTIVES: &str = "reveal, style, fx";
 pub const ENTRANCE_EFFECTS: &[&str] = &["fade", "slide", "typewriter"];
 
@@ -202,6 +208,7 @@ pub fn parse_chapter(file: &Path, source: &str, assets: &mut Assets, diagnostics
         title,
         header_image,
         limits: front.pagination.unwrap_or_default(),
+        paper: front.paper.map(|name| (name, 1)),
         items,
         content_hash: short_hash(source.as_bytes()),
     })
@@ -263,6 +270,13 @@ impl ChapterParser<'_> {
     fn leaf(&mut self, name: &str, attrs: &Attrs, line: usize) {
         match name {
             "pagebreak" => self.items.push(Item::PageBreak),
+            "paper" => {
+                self.check_options(name, attrs, &[], line);
+                match attrs.main(&[]) {
+                    Some(paper) => self.items.push(Item::Paper { name: paper.to_string(), line }),
+                    None => self.error(line, "`::paper` needs the name of a paper from the theme, like `::paper{letter}`"),
+                }
+            }
             "music" | "ambient" | "sfx" => {
                 if let Some(cue) = self.cue(name, attrs, line) {
                     self.items.push(Item::Cue { cue, line });
@@ -614,6 +628,7 @@ mod tests {
                 },
                 Item::PageBreak => "break".into(),
                 Item::Illustration { image, .. } => format!("illustration {}", image.as_ref().map_or("none", |i| i.alt.as_str())),
+                Item::Paper { name, .. } => format!("paper {name}"),
             })
             .collect();
         assert_eq!(

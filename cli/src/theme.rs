@@ -2,7 +2,7 @@
 //! field an override clears is written as `"none"`.
 
 use crate::assets::{AssetKind, Assets};
-use crate::bundle::{Background, Backgrounds, Decoration, FontFile, ImageRef, LandingTheme, PageFrame, Theme, ThemeOverride};
+use crate::bundle::{Background, Backgrounds, Decoration, FontFile, ImageRef, LandingTheme, PageFrame, Paper, Theme, ThemeOverride};
 use crate::diagnostics::{Diagnostics, line_of};
 use serde::Deserialize;
 use std::collections::BTreeMap;
@@ -18,6 +18,8 @@ struct ThemeSource {
     fonts: Vec<FontSource>,
     #[serde(default)]
     styles: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(default)]
+    papers: BTreeMap<String, PaperSource>,
     backgrounds: Option<BackgroundsSource>,
     decoration: Option<DecorationSource>,
     landing: Option<LandingSource>,
@@ -48,8 +50,18 @@ struct BackgroundsSource {
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
+struct PaperSource {
+    color: Option<String>,
+    /// An image, or "none".
+    texture: Option<Spanned<String>>,
+    grain: Option<f64>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct BackgroundSource {
-    src: String,
+    src: Option<String>,
+    color: Option<String>,
     poster: Option<String>,
     fit: Option<String>,
     position: Option<String>,
@@ -63,6 +75,7 @@ struct DecorationSource {
     page_frame: Option<Clearable>,
     chapter_ornament: Option<Spanned<String>>,
     drop_caps: Option<bool>,
+    paper_grain: Option<f64>,
 }
 
 #[derive(Deserialize)]
@@ -135,6 +148,7 @@ pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostic
     let mut theme = Theme {
         tokens: loader.tokens(source.tokens),
         styles: loader.styles(source.styles),
+        papers: loader.papers(source.papers),
         fonts: source
             .fonts
             .into_iter()
@@ -265,6 +279,34 @@ impl Loader<'_> {
             .collect()
     }
 
+    fn papers(&mut self, papers: BTreeMap<String, PaperSource>) -> BTreeMap<String, Paper> {
+        papers
+            .into_iter()
+            .filter_map(|(name, source)| {
+                if !valid_name(&name) {
+                    self.diagnostics.error(Some(&self.file), None, format!("the paper name `{name}` must be lowercase words joined by dashes"));
+                    return None;
+                }
+                if source.color.as_deref().is_some_and(|c| c.contains(UNSAFE)) {
+                    self.diagnostics.error(Some(&self.file), None, format!("paper `{name}`: the color can't contain ; {{ }} < or >"));
+                    return None;
+                }
+                let grain = self.grain(source.grain, &format!("paper `{name}`"));
+                let texture = source.texture.as_ref().and_then(|t| self.clearable_asset(t, AssetKind::Image));
+                Some((name, Paper { color: source.color, texture, grain }))
+            })
+            .collect()
+    }
+
+    fn grain(&mut self, grain: Option<f64>, what: &str) -> Option<f64> {
+        let grain = grain?;
+        if (0.0..=1.0).contains(&grain) {
+            return Some(grain);
+        }
+        self.diagnostics.error(Some(&self.file), None, format!("{what}: `grain` must be between 0 and 1, not {grain}"));
+        None
+    }
+
     fn backgrounds(&mut self, source: BackgroundsSource) -> Backgrounds {
         Backgrounds { landing: source.landing.and_then(|b| self.background(b)), reading: source.reading.and_then(|b| self.background(b)) }
     }
@@ -272,12 +314,23 @@ impl Loader<'_> {
     fn background(&mut self, source: Clearable) -> Option<Option<Background>> {
         let (background, line) = self.clearable::<BackgroundSource>(&source)?;
         let Some(background) = background else { return Some(None) };
-        let src = self.asset_at(&background.src, line, AssetKind::Media)?;
+        if background.src.is_none() && background.color.is_none() {
+            self.diagnostics.error(Some(&self.file), Some(line), "a background needs a `src` (image or video), a `color`, or both");
+            return None;
+        }
+        if background.color.as_deref().is_some_and(|c| c.contains(UNSAFE)) {
+            self.diagnostics.error(Some(&self.file), Some(line), "the background `color` can't contain ; { } < or >");
+            return None;
+        }
+        let src = match &background.src {
+            Some(src) => Some(self.asset_at(src, line, AssetKind::Media)?),
+            None => None,
+        };
         let poster = background.poster.as_deref().and_then(|p| self.asset_at(p, line, AssetKind::Image));
         if let Some(opacity) = background.opacity.filter(|o| !(0.0..=1.0).contains(o)) {
             self.diagnostics.error(Some(&self.file), Some(line), format!("`opacity` must be between 0 and 1, not {opacity}"));
         }
-        Some(Some(Background { src, poster, fit: background.fit, position: background.position, opacity: background.opacity }))
+        Some(Some(Background { src, color: background.color, poster, fit: background.fit, position: background.position, opacity: background.opacity }))
     }
 
     fn decoration(&mut self, source: DecorationSource) -> Decoration {
@@ -295,6 +348,7 @@ impl Loader<'_> {
                 Some(Some(PageFrame { src, slice: frame.slice, width: frame.width, repeat: frame.repeat }))
             }),
             drop_caps: source.drop_caps,
+            paper_grain: self.grain(source.paper_grain, "decoration"),
         }
     }
 

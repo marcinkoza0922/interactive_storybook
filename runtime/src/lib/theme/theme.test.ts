@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Bundle } from '../bundle/types'
-import { backgroundKind, effectiveTheme, themeCss } from './theme'
+import { backgroundKind, effectiveTheme, grainImage, themeCss } from './theme'
 
 const chapters = ['one', 'two', 'three'].map((id) => ({ id, title: id, content_hash: 'h', pages: [{ blocks: [] }] }))
 
@@ -84,11 +84,35 @@ describe('themeCss', () => {
   })
 })
 
+describe('paper', () => {
+  it('writes the book paper and named papers as tokens', () => {
+    const css = themeCss(
+      {
+        ...effectiveTheme(bundle, 0),
+        decoration: { paper_grain: 0.4 },
+        papers: { letter: { color: '#efe2c4', texture: 'parchment.png', grain: 0 }, plain: { texture: null } },
+      },
+      url,
+    )
+    expect(css).toContain('--tome-paper-grain: url("data:image/svg+xml,')
+    expect(css).toContain(
+      '.tome-reading[data-paper="letter"] { --tome-paper: #efe2c4; --tome-page-texture: url("https://book.test/parchment.png"); --tome-paper-grain: none; }',
+    )
+    expect(css).toContain('.tome-reading[data-paper="plain"] { --tome-page-texture: none; }')
+  })
+
+  it('generates no grain at zero and stays safe to embed in CSS', () => {
+    expect(grainImage(0)).toBe('none')
+    expect(grainImage(0.5)).not.toMatch(/[;{}<>]/)
+  })
+})
+
 describe('backgroundKind', () => {
   it('infers the kind from the file extension', () => {
     expect(backgroundKind({ src: 'fog.webm' })).toBe('video')
     expect(backgroundKind({ src: 'rain.GIF' })).toBe('animated')
     expect(backgroundKind({ src: 'paper.png' })).toBe('image')
     expect(backgroundKind({ src: 'loop.png', kind: 'animated' })).toBe('animated')
+    expect(backgroundKind({ color: '#222' })).toBeNull()
   })
 })

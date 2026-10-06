@@ -60,6 +60,9 @@ pub struct Page {
     pub blocks: Vec<Block>,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub references: Vec<String>,
+    /// A named paper from the theme, for this page.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paper: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -173,6 +176,8 @@ pub struct Theme {
     pub fonts: Vec<FontFile>,
     #[serde(skip_serializing_if = "BTreeMap::is_empty")]
     pub styles: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub papers: BTreeMap<String, Paper>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backgrounds: Option<Backgrounds>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -204,9 +209,23 @@ pub struct Backgrounds {
     pub reading: Option<Option<Background>>,
 }
 
+/// Unset fields keep the book's own paper; `texture: Some(None)` removes the texture.
+#[derive(Debug, Default, Serialize)]
+pub struct Paper {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub texture: Option<Option<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub grain: Option<f64>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct Background {
-    pub src: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub src: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub poster: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -227,6 +246,8 @@ pub struct Decoration {
     pub chapter_ornament: Option<Option<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub drop_caps: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paper_grain: Option<f64>,
 }
 
 #[derive(Debug, Serialize)]

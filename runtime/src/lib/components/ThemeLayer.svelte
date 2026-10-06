@@ -14,6 +14,7 @@
 
   const background = $derived(theme.backgrounds[screen] ?? null)
   const kind = $derived(background ? backgroundKind(background) : null)
+  const src = $derived(background?.src)
   const customCss = $derived(theme.custom_css)
 
   // The generated stylesheet and the author's custom CSS go at the end of <head>, after the
@@ -42,30 +43,33 @@
     root.dropCaps = theme.decoration.drop_caps ? 'on' : 'off'
     root.chapterOrnament = theme.decoration.chapter_ornament ? 'on' : 'off'
     root.pageFrame = theme.decoration.page_frame ? 'on' : 'off'
+    // With a background showing, the reading layout draws the book as sheets on top of it.
+    root.backdrop = background ? 'on' : 'off'
   })
 </script>
 
 {#if background}
-  {#key background.src}
+  {#key `${background.src}|${background.color}`}
     <div
       class="tome-backdrop"
       aria-hidden="true"
       style:opacity={background.opacity}
+      style:background-color={background.color}
       style:--tome-backdrop-fit={background.fit}
       style:--tome-backdrop-position={background.position}
     >
-      {#if kind === 'video' && motion}
+      {#if src && kind === 'video' && motion}
         <video
-          src={assetUrl(background.src)}
+          src={assetUrl(src)}
           poster={background.poster ? assetUrl(background.poster) : undefined}
           autoplay
           muted
           loop
           playsinline
         ></video>
-      {:else if kind === 'image' || motion}
-        <img src={assetUrl(background.src)} alt="" />
-      {:else if background.poster}
+      {:else if src && (kind === 'image' || motion)}
+        <img src={assetUrl(src)} alt="" />
+      {:else if src && background.poster}
         <!-- Motion is off: a still frame instead of the video or animation. -->
         <img src={assetUrl(background.poster)} alt="" />
       {/if}

@@ -17,10 +17,21 @@ src = "fog.webm"
 poster = "fog.jpg"
 opacity = 0.45
 
+# Behind the book while reading: a desk. The book's pages lie on it.
+[backgrounds.reading]
+src = "desk.svg"
+color = "#2a1f17"
+
 [decoration]
-page_texture = "paper.svg"
+paper_grain = 0.3
 chapter_ornament = "ornament.svg"
 drop_caps = true
+
+# Pages can use a different paper with ::paper{letter}: here, an old parchment.
+[papers.letter]
+color = "#eadbb8"
+texture = "parchment.svg"
+grain = 0.45
 
 [landing]
 cover = "plate-harbour.svg"
@@ -43,6 +54,8 @@ illustration-bg = "#15181b"
 highlight-bg = "rgb(217 180 74 / 0.35)"
 [override.decoration]
 page_texture = "none"
+[override.backgrounds.reading]
+color = "#0b0d0f"
 
 [[override]]
 from = "the-tide"

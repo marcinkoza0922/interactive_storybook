@@ -34,6 +34,7 @@ title = "The Harbour"            # instead of a # heading
 header_image = "ornament.svg"    # art above the title
 header_image_alt = ""
 pagination = { max_words = 150 } # this chapter only
+paper = "letter"                 # a paper from the theme, for every page
 +++
 ```
 
@@ -49,6 +50,14 @@ Pages fill up to the limits in `book.toml` and break between paragraphs. Force a
 ```
 
 A page that doesn't fit the screen scrolls.
+
+A page can be printed on a different paper from the theme (see Theme below):
+
+```
+::paper{letter}
+```
+
+It applies to the page the next paragraph lands on.
 
 ## Sound
 
@@ -161,16 +170,29 @@ src = "lora-regular.woff2"
 font-family = "Caveat, cursive"
 font-size = "1.4em"
 
-[backgrounds.landing]           # also [backgrounds.reading]
+[backgrounds.landing]           # the title screen
 src = "fog.webm"                # image, GIF or video
 poster = "fog.jpg"              # shown when readers turn motion off
 opacity = 0.5
 
+[backgrounds.reading]           # behind the book while reading: the pages
+src = "desk.jpg"                # lie on top of it, with the background
+color = "#2a1f17"               # showing around them (a color alone works too)
+
+[tokens]
+paper = "#f3ecdc"               # the color of the pages themselves
+
 [decoration]
-page_texture = "paper.png"
+paper_grain = 0.3               # grain on the paper, 0 to 1
+page_texture = "paper.png"      # a tiled image on the paper
 chapter_ornament = "ornament.svg"
 drop_caps = true
 page_frame = { src = "frame.svg", slice = 30, width = "18px" }
+
+[papers.letter]                 # a paper pages can ask for with ::paper{letter}
+color = "#efe3c6"
+texture = "parchment.png"       # or "none"
+grain = 0.5
 
 [landing]
 cover = "cover.jpg"

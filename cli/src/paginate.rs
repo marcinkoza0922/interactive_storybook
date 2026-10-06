@@ -18,6 +18,7 @@ pub struct PaginatedPage {
 struct Draft {
     blocks: Vec<(ParsedBlock, Vec<Cue>)>,
     illustration: Option<Option<ImageRef>>,
+    paper: Option<String>,
     words: usize,
     characters: usize,
     lines: usize,
@@ -45,6 +46,7 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
     let mut drafts: Vec<Draft> = vec![Draft::default()];
     let mut pending_cues: Vec<Cue> = Vec::new();
     let mut pending_illustration: Option<(Option<ImageRef>, usize)> = None;
+    let mut pending_paper: Option<(String, usize)> = None;
 
     for item in chapter.items {
         match item {
@@ -56,6 +58,7 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
             // Cues and illustration changes belong with the content that follows them.
             Item::Cue { cue, .. } => pending_cues.push(cue),
             Item::Illustration { image, line } => pending_illustration = Some((image, line)),
+            Item::Paper { name, line } => pending_paper = Some((name, line)),
             Item::Block(block) => {
                 let current = drafts.last().unwrap();
                 if !current.blocks.is_empty() && current.would_exceed(&block, &limits) {
@@ -68,6 +71,12 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
                 }
                 if let Some((image, _)) = pending_illustration.take() {
                     current.illustration = Some(image);
+                }
+                if let Some((paper, line)) = pending_paper.take() {
+                    if current.paper.as_ref().is_some_and(|p| p != &paper) {
+                        diagnostics.warning(Some(file), Some(line), "this page already has a paper; the later `::paper` wins");
+                    }
+                    current.paper = Some(paper);
                 }
                 current.add(block, std::mem::take(&mut pending_cues));
             }
@@ -82,6 +91,9 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
         } else {
             last.illustration = Some(image);
         }
+    }
+    if let Some((_, line)) = pending_paper {
+        diagnostics.warning(Some(file), Some(line), "this `::paper` comes after the chapter's last paragraph and is ignored");
     }
     if !pending_cues.is_empty() {
         // An empty anchor block at the same step as the last paragraph, so the cues fire with it.
@@ -99,6 +111,7 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
         last.blocks.push((anchor, pending_cues));
     }
 
+    let chapter_paper = chapter.paper.map(|(name, _)| name);
     let mut next_block = 0;
     drafts
         .into_iter()
@@ -126,7 +139,8 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
                     Block { id: format!("{}-{next_block}", chapter.id), html: block.html, reveal, cues }
                 })
                 .collect();
-            PaginatedPage { page: Page { illustration: draft.illustration, blocks, references: vec![] }, texts }
+            let paper = draft.paper.or_else(|| chapter_paper.clone());
+            PaginatedPage { page: Page { illustration: draft.illustration, blocks, references: vec![], paper }, texts }
         })
         .collect()
 }
@@ -150,7 +164,7 @@ mod tests {
     }
 
     fn chapter(items: Vec<Item>) -> ParsedChapter {
-        ParsedChapter { id: "ch".into(), title: "Ch".into(), header_image: None, limits: PageLimits::default(), items, content_hash: "h".into() }
+        ParsedChapter { id: "ch".into(), title: "Ch".into(), header_image: None, limits: PageLimits::default(), paper: None, items, content_hash: "h".into() }
     }
 
     fn sfx() -> Item {
@@ -206,6 +220,16 @@ mod tests {
         let (pages, _) = run(vec![block(1, Some(3)), sfx()], None);
         let anchor = pages[0].page.blocks.last().unwrap();
         assert_eq!((anchor.html.as_str(), anchor.cues.len(), anchor.reveal.as_ref().map(|r| r.step)), ("", 1, Some(1)));
+    }
+
+    #[test]
+    fn papers_apply_to_one_page_over_the_chapter_default() {
+        let mut chapter = chapter(vec![block(1, None), Item::PageBreak, Item::Paper { name: "letter".into(), line: 1 }, block(1, None), Item::PageBreak, block(1, None)]);
+        chapter.paper = Some(("plain".into(), 1));
+        let mut diagnostics = Diagnostics::default();
+        let pages = paginate(chapter, PageLimits::default(), Path::new("ch.md"), &mut diagnostics);
+        let papers: Vec<_> = pages.iter().map(|p| p.page.paper.as_deref()).collect();
+        assert_eq!(papers, [Some("plain"), Some("letter"), Some("plain")]);
     }
 
     #[test]

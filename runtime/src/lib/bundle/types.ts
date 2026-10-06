@@ -58,6 +58,8 @@ export interface Page {
    * Absent: the previous page's track illustration carries over.
    */
   illustration?: ImageRef | null
+  /** A named paper from the theme, for this page only. */
+  paper?: string
   /**
    * IDs of references mentioned on this page, in order of first mention. Matching names and
    * aliases against the text (and gating aliases by chapter) is the compiler's job.
@@ -137,6 +139,8 @@ export interface Theme {
   fonts?: FontFile[]
   /** Named special styles: CSS declarations for `[data-tome-style="<name>"]`. */
   styles?: Record<string, Record<string, string>>
+  /** Named papers that pages can use instead of the book's own. */
+  papers?: Record<string, Paper>
   backgrounds?: Backgrounds
   decoration?: Decoration
   landing?: LandingTheme
@@ -153,8 +157,19 @@ export interface FontFile {
   style?: string
 }
 
+/** A sheet of paper. Unset fields keep the book's paper. */
+export interface Paper {
+  color?: string
+  /** A tiled image, or null for none. */
+  texture?: string | null
+  /** Generated grain, 0 (none) to 1. */
+  grain?: number
+}
+
+/** An image, GIF or video, a plain color, or a color behind a partly transparent image. */
 export interface Background {
-  src: string
+  src?: string
+  color?: string
   /** Inferred from the extension when absent. */
   kind?: 'image' | 'animated' | 'video'
   /** Still frame shown instead of a video or GIF when motion is turned off. */
@@ -177,6 +192,8 @@ export interface Decoration {
   /** Shown above chapter titles of chapters without their own header art. */
   chapter_ornament?: string | null
   drop_caps?: boolean
+  /** Generated grain on the paper, 0 (none) to 1. */
+  paper_grain?: number
 }
 
 export interface LandingTheme {

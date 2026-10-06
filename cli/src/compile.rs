@@ -123,6 +123,8 @@ pub fn compile(root: &Path) -> Compiled {
         known_styles.extend(styles.iter().cloned());
     }
     check_styles(&chapters, &known_styles, &mut diagnostics);
+    let papers: BTreeSet<String> = theme.as_ref().map(|(t, _)| t.papers.keys().cloned().collect()).unwrap_or_default();
+    check_papers(&chapters, &papers, &mut diagnostics);
     resolve_audio(&mut chapters, &mut diagnostics);
 
     let (references, mut matcher) = references::load(root, &chapter_ids, &mut assets, &mut diagnostics);
@@ -200,6 +202,28 @@ fn check_styles(chapters: &[(PathBuf, ParsedChapter)], known: &BTreeSet<String>,
                         Some(format!("define it under [styles.{name}] in theme/theme.toml; known styles are {}", known.join(", ")));
                 }
             }
+        }
+    }
+}
+
+/// Every `::paper{name}` and front-matter `paper` must name a paper the theme defines.
+fn check_papers(chapters: &[(PathBuf, ParsedChapter)], papers: &BTreeSet<String>, diagnostics: &mut Diagnostics) {
+    let wanted = chapters.iter().flat_map(|(file, chapter)| {
+        let front = chapter.paper.iter().map(move |(name, line)| (file, name, *line));
+        let pages = chapter.items.iter().filter_map(move |item| match item {
+            Item::Paper { name, line } => Some((file, name, *line)),
+            _ => None,
+        });
+        front.chain(pages)
+    });
+    for (file, name, line) in wanted {
+        if !papers.contains(name) {
+            let known: Vec<_> = papers.iter().map(String::as_str).collect();
+            diagnostics.error(Some(file), Some(line), format!("no paper is called `{name}`")).help = Some(if known.is_empty() {
+                format!("define it under [papers.{name}] in theme/theme.toml")
+            } else {
+                format!("define it under [papers.{name}] in theme/theme.toml; papers are {}", known.join(", "))
+            });
         }
     }
 }

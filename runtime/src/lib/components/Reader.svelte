@@ -271,7 +271,7 @@
 <svelte:window {onkeydown} />
 <svelte:document {onselectionchange} />
 
-<div class="tome-reading" data-layout={layout} data-chapter={chapter.id}>
+<div class="tome-reading" data-layout={layout} data-chapter={chapter.id} data-paper={page.paper}>
   <!-- Keyboard input is handled at the window level; clicking is a pointer convenience. -->
   <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
   <div class="tome-stage" {onclick}>

@@ -11,6 +11,7 @@ The dockmaster looked her over once and returned to his ledger. "If you're waiti
 
 ::pagebreak
 
+::paper{letter}
 ::illustration{plate-candle alt="A single lit candle on a bare table, a folded note beside it"}
 ::ambient{stop sea fade=3}
 She found the address on the letter at the end of a crooked lane: a narrow house with its shutters nailed closed. The door, when she tried it, swung open at a touch.

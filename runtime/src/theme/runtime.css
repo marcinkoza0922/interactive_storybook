@@ -161,6 +161,9 @@ body {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
+  /* The paper: grain over texture over color. */
+  background-color: var(--tome-paper);
+  background-image: var(--tome-paper-grain), var(--tome-page-texture);
 }
 
 /* While the narrow layout shows the illustration, the column shrinks to its status bar. */
@@ -192,7 +195,8 @@ body {
   min-height: 0;
   margin: 0;
   padding: clamp(1rem, 3vw, 2.5rem);
-  background: var(--tome-illustration-bg);
+  background-color: var(--tome-illustration-bg);
+  background-image: var(--tome-paper-grain);
 }
 
 [data-layout='spread'] .tome-illustration {
@@ -213,6 +217,48 @@ body {
 
 .tome-reader[hidden] {
   display: none;
+}
+
+/*
+ * Book frame: with a reading background showing, the book becomes sheets of paper lying on
+ * it, a page wide (two, side by side, in a spread), with the background visible around them.
+ */
+:root[data-backdrop='on'] .tome-stage {
+  align-items: center;
+  justify-content: center;
+  padding: var(--tome-book-margin);
+}
+
+:root[data-backdrop='on'] .tome-text-column,
+:root[data-backdrop='on'] .tome-illustration {
+  width: min(100%, var(--tome-sheet-width));
+  overflow: hidden;
+  border-radius: var(--tome-sheet-radius);
+  box-shadow: var(--tome-sheet-shadow);
+}
+
+:root[data-backdrop='on'] [data-layout='spread'] .tome-stage {
+  align-items: stretch;
+}
+
+:root[data-backdrop='on'] [data-layout='spread'] .tome-text-column,
+:root[data-backdrop='on'] [data-layout='spread'] .tome-illustration {
+  flex: 0 1 var(--tome-sheet-width);
+}
+
+/* The two pages meet at the spine: square inner corners and a soft fold shadow. */
+:root[data-backdrop='on'] [data-layout='spread'] .tome-illustration {
+  border-start-end-radius: 0;
+  border-end-end-radius: 0;
+  border-inline-end: none;
+}
+
+:root[data-backdrop='on'] [data-layout='spread'] .tome-text-column {
+  border-start-start-radius: 0;
+  border-end-start-radius: 0;
+  box-shadow:
+    var(--tome-sheet-shadow),
+    inset 1.25rem 0 1.5rem -1.25rem rgb(0 0 0 / 0.25);
 }
 
 .tome-page-fade-in {
@@ -251,7 +297,6 @@ body {
   flex: 1;
   overflow-y: auto;
   cursor: default;
-  background-image: var(--tome-page-texture);
 }
 
 .tome-page {
@@ -516,10 +561,26 @@ body {
 
 .tome-status-actions {
   display: flex;
+  flex: none;
   gap: 0.25rem;
 }
 
+/* On narrow pages the chapter title gives way first; the controls never wrap. */
+.tome-status > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tome-status > span:last-child,
+.tome-status-actions .tome-link-button {
+  flex: none;
+  white-space: nowrap;
+}
+
 .tome-status {
+  gap: 0.5rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -874,4 +935,25 @@ body {
   grid-template-columns: 1fr auto;
   align-items: end;
   gap: 1rem;
+}
+
+/* Very narrow screens: tighter status bar so its controls fit on the page. */
+@media (max-width: 26rem) {
+  .tome-status {
+    padding-inline: 0.75rem;
+    gap: 0.25rem;
+  }
+
+  .tome-status-actions {
+    gap: 0;
+  }
+
+  .tome-status-actions .tome-link-button {
+    padding-inline: 0.35rem;
+  }
+}
+
+/* Monospace fonts run large; match inline code to the surrounding text. */
+.tome-block :where(code) {
+  font-size: 0.85em;
 }

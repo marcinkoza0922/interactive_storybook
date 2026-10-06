@@ -5,6 +5,8 @@
 :root {
   /* Color */
   --tome-page-bg: #f6f1e7;
+  /* The sheet the text is printed on; the page color unless a theme sets its own. */
+  --tome-paper: var(--tome-page-bg);
   --tome-text: #2b2620;
   --tome-text-muted: #7a6f62;
   --tome-accent: #8a3b2e;
@@ -32,6 +34,13 @@
   /* Decoration (set from the theme's decoration section) */
   --tome-page-surface: transparent;
   --tome-page-texture: none;
+  --tome-paper-grain: none;
+
+  /* The book as an object, when a reading background shows behind it */
+  --tome-book-margin: clamp(0.5rem, 3vw, 2.5rem);
+  --tome-sheet-width: calc(var(--tome-page-max-width) + 2 * var(--tome-page-padding) + 2 * var(--tome-page-frame-width));
+  --tome-sheet-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 0.35), 0 0.1rem 0.4rem rgb(0 0 0 / 0.2);
+  --tome-sheet-radius: 3px;
   --tome-page-frame: none;
   --tome-page-frame-width: 0px;
   --tome-chapter-ornament: none;
