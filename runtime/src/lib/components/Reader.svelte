@@ -9,10 +9,12 @@
     bundle: Bundle
     initial: ReaderState
     onpositionchange: (position: Position) => void
+    /** Every navigation, including reveal steps; drives audio. */
+    onchange: (reader: ReaderState, change: 'turn' | 'reveal') => void
     onexit: () => void
   }
 
-  let { bundle, initial, onpositionchange, onexit }: Props = $props()
+  let { bundle, initial, onpositionchange, onchange, onexit }: Props = $props()
 
   let reader = $state(untrack(() => initial))
   /** Blocks whose entrance animation is still running. */
@@ -29,6 +31,7 @@
 
     entering.clear()
     reader = next
+    onchange(next, turned ? 'turn' : 'reveal')
 
     if (turned) {
       onpositionchange(next.position)

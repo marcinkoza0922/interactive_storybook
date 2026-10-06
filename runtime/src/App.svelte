@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte'
+  import { AudioDirector } from './lib/audio/director'
+  import { WebAudioEngine } from './lib/audio/webaudio'
   import { loadBundle } from './lib/bundle/load'
   import type { Bundle } from './lib/bundle/types'
   import Landing from './lib/components/Landing.svelte'
@@ -9,6 +11,7 @@
   import { nextSave, readSave, resolvePosition, writeSave, type SaveState } from './lib/storage/save'
 
   const storage = new LocalStorageAdapter()
+  const bundleUrl = new URL('book/book.json', document.baseURI).href
 
   type Screen =
     | { kind: 'loading' }
@@ -18,10 +21,12 @@
 
   let screen = $state<Screen>({ kind: 'loading' })
   let save = $state<SaveState | null>(null)
+  let engine: WebAudioEngine | null = null
+  let director: AudioDirector | null = null
 
   onMount(async () => {
     try {
-      const bundle = await loadBundle(`${import.meta.env.BASE_URL}book/book.json`)
+      const bundle = await loadBundle(bundleUrl)
       document.title = bundle.book.title
       document.documentElement.lang = bundle.book.language
       save = await readSave(storage, bundle)
@@ -36,15 +41,30 @@
     writeSave(storage, bundle, save)
   }
 
+  /** Called from the Begin/Continue click: the user gesture browsers require before audio. */
+  function startReading(bundle: Bundle, initial: ReaderState) {
+    engine ??= new WebAudioEngine(bundleUrl)
+    engine.unlock()
+    director = new AudioDirector(bundle, engine)
+    director.update(initial, 'enter')
+    screen = { kind: 'reading', bundle, initial }
+  }
+
   function begin(bundle: Bundle) {
     // Starting over keeps the furthest chapter reached, so unlocked references stay unlocked.
     savePosition(bundle, { chapter: 0, page: 0 })
-    screen = { kind: 'reading', bundle, initial: { position: { chapter: 0, page: 0 }, revealed: 0, direction: 'forward' } }
+    startReading(bundle, { position: { chapter: 0, page: 0 }, revealed: 0, direction: 'forward' })
   }
 
   function resume(bundle: Bundle, save: SaveState) {
-    // Resuming lands on an already-seen page, so it is shown fully revealed.
-    screen = { kind: 'reading', bundle, initial: arriveBackward(bundle, resolvePosition(bundle, save)) }
+    // Resuming lands on an already-seen page: shown fully revealed, its audio restored at once.
+    startReading(bundle, arriveBackward(bundle, resolvePosition(bundle, save)))
+  }
+
+  function exit(bundle: Bundle) {
+    director?.stop()
+    director = null
+    screen = { kind: 'landing', bundle }
   }
 </script>
 
@@ -66,6 +86,7 @@
     {bundle}
     initial={screen.initial}
     onpositionchange={(position) => savePosition(bundle, position)}
-    onexit={() => (screen = { kind: 'landing', bundle })}
+    onchange={(reader, change) => director?.update(reader, change)}
+    onexit={() => exit(bundle)}
   />
 {/if}

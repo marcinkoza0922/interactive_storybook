@@ -6,6 +6,9 @@
     "author": "A Sample Author",
     "language": "en"
   },
+  "audio": {
+    "restore_delay_ms": 3000
+  },
   "chapters": [
     {
       "id": "the-harbour",
@@ -16,7 +19,20 @@
           "blocks": [
             {
               "id": "b1",
-              "html": "<p>The ferry came in late, as it always did in the weeks before the storms, and Wren was the last to step off. The harbour smelled of tar and wet rope. Somewhere above the town a bell was ringing, slow and uneven, as though whoever pulled it had forgotten the count.</p>"
+              "html": "<p>The ferry came in late, as it always did in the weeks before the storms, and Wren was the last to step off. The harbour smelled of tar and wet rope. Somewhere above the town a bell was ringing, slow and uneven, as though whoever pulled it had forgotten the count.</p>",
+              "cues": [
+                {
+                  "kind": "music",
+                  "src": "audio/harbour.ogg",
+                  "volume": 0.8
+                },
+                {
+                  "kind": "ambient",
+                  "id": "sea",
+                  "src": "audio/sea.ogg",
+                  "volume": 0.7
+                }
+              ]
             },
             {
               "id": "b2",
@@ -32,7 +48,14 @@
           "blocks": [
             {
               "id": "b4",
-              "html": "<p>She found the address on the letter at the end of a crooked lane: a narrow house with its shutters nailed closed. The door, when she tried it, swung open at a touch.</p>"
+              "html": "<p>She found the address on the letter at the end of a crooked lane: a narrow house with its shutters nailed closed. The door, when she tried it, swung open at a touch.</p>",
+              "cues": [
+                {
+                  "kind": "ambient_stop",
+                  "id": "sea",
+                  "fade_ms": 3000
+                }
+              ]
             },
             {
               "id": "b5",
@@ -40,7 +63,13 @@
               "reveal": {
                 "step": 1,
                 "effect": "fade"
-              }
+              },
+              "cues": [
+                {
+                  "kind": "music_stop",
+                  "fade_ms": 2500
+                }
+              ]
             },
             {
               "id": "b6",
@@ -48,7 +77,13 @@
               "reveal": {
                 "step": 2,
                 "effect": "fade"
-              }
+              },
+              "cues": [
+                {
+                  "kind": "sfx",
+                  "src": "audio/match.ogg"
+                }
+              ]
             },
             {
               "id": "b7",
@@ -57,7 +92,15 @@
                 "step": 3,
                 "effect": "fade",
                 "duration_ms": 1400
-              }
+              },
+              "cues": [
+                {
+                  "kind": "music",
+                  "src": "audio/letter.ogg",
+                  "fade_ms": 3000,
+                  "delay_ms": 800
+                }
+              ]
             }
           ]
         },
@@ -65,7 +108,21 @@
           "blocks": [
             {
               "id": "b8",
-              "html": "<p>Wren did not sleep that night. She sat with her back to the wall and the candle between her hands, listening to the house settle around her. Every so often the bell rang again, always the same uneven pattern, and every time she counted the strokes and came up with a different number.</p>"
+              "html": "<p>Wren did not sleep that night. She sat with her back to the wall and the candle between her hands, listening to the house settle around her. Every so often the bell rang again, always the same uneven pattern, and every time she counted the strokes and came up with a different number.</p>",
+              "cues": [
+                {
+                  "kind": "ambient",
+                  "id": "wind",
+                  "src": "audio/wind.ogg",
+                  "volume": 0.6
+                },
+                {
+                  "kind": "sfx",
+                  "src": "audio/bell.ogg",
+                  "volume": 0.6,
+                  "delay_ms": 1500
+                }
+              ]
             },
             {
               "id": "b9",
@@ -92,7 +149,14 @@
           "blocks": [
             {
               "id": "b12",
-              "html": "<p>The keeper was younger than she expected, with ink on his fingers and a face that gave away nothing at all.</p>"
+              "html": "<p>The keeper was younger than she expected, with ink on his fingers and a face that gave away nothing at all.</p>",
+              "cues": [
+                {
+                  "kind": "music",
+                  "src": "audio/keeper.ogg",
+                  "fade_ms": 2500
+                }
+              ]
             },
             {
               "id": "b13",
@@ -112,7 +176,14 @@
               "reveal": {
                 "step": 2,
                 "effect": "fade"
-              }
+              },
+              "cues": [
+                {
+                  "kind": "sfx",
+                  "src": "audio/bell.ogg",
+                  "volume": 0.8
+                }
+              ]
             }
           ]
         },
@@ -124,11 +195,34 @@
             },
             {
               "id": "b17",
-              "html": "<p>At the top there was no lamp. There was only the bell, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, a coat exactly like her own.</p>"
+              "html": "<p>At the top there was no lamp. There was only the bell, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, a coat exactly like her own.</p>",
+              "reveal": {
+                "step": 1,
+                "effect": "fade"
+              },
+              "cues": [
+                {
+                  "kind": "ambient_stop",
+                  "id": "wind",
+                  "fade_ms": 0
+                },
+                {
+                  "kind": "music_stop",
+                  "fade_ms": 0
+                },
+                {
+                  "kind": "sfx",
+                  "src": "audio/bell.ogg"
+                }
+              ]
             },
             {
               "id": "b18",
-              "html": "<p><em>End of the sample.</em></p>"
+              "html": "<p><em>End of the sample.</em></p>",
+              "reveal": {
+                "step": 2,
+                "effect": "fade"
+              }
             }
           ]
         }

@@ -234,7 +234,11 @@ Music, ambience and sound effects are separate channels, each with its own volum
 | Reveals | Animate step by step | Page shown fully revealed |
 | Music / ambience | Applied as cued | Restored to the page's state **after a short delay** (default ~3 s, author-configurable), so a reader glancing back for a detail isn't interrupted |
 
-The compiler precomputes the music/ambient state at the end of every page, so the runtime can restore the correct state from any position without replaying history.
+The runtime derives the music/ambient state at the end of every page from the cues when the book loads (a single cheap pass), so it can restore the correct state from any position. The compiler doesn't need to emit it.
+
+Resuming from the landing screen restores the page's audio immediately; the restore delay applies only when navigating back within a reading session.
+
+Delayed cues that haven't fired yet when the reader leaves the page are dropped. Their lasting effect on music and ambience is already captured in the page states, so only pending sound effects are lost.
 
 ### 6.4 Web autoplay
 

@@ -7,7 +7,13 @@ export const SUPPORTED_SCHEMA_VERSION = 1
 export interface Bundle {
   bundle_schema_version: number
   book: BookMeta
+  audio?: AudioConfig
   chapters: Chapter[]
+}
+
+export interface AudioConfig {
+  /** Delay before restoring a page's music and ambience after navigating back to it. */
+  restore_delay_ms?: number
 }
 
 export interface BookMeta {
@@ -40,6 +46,8 @@ export interface Block {
   html: string
   /** Absent: visible as soon as the page is shown. */
   reveal?: Reveal
+  /** Audio cues that fire when this block becomes visible, in order. */
+  cues?: Cue[]
 }
 
 export type EntranceEffect = 'fade'
@@ -50,3 +58,11 @@ export interface Reveal {
   effect: EntranceEffect
   duration_ms?: number
 }
+
+/** Paths in cues are relative to the bundle's book.json. Volumes are 0–1, default 1. */
+export type Cue =
+  | { kind: 'music'; src: string; volume?: number; fade_ms?: number; delay_ms?: number }
+  | { kind: 'music_stop'; fade_ms?: number; delay_ms?: number }
+  | { kind: 'ambient'; id: string; src: string; volume?: number; fade_ms?: number; delay_ms?: number }
+  | { kind: 'ambient_stop'; id: string; fade_ms?: number; delay_ms?: number }
+  | { kind: 'sfx'; src: string; volume?: number; delay_ms?: number }
