@@ -16,7 +16,9 @@ Commands, run from this folder:
 
 - `tome preview` — read the book in your browser; it updates as you save.
 - `tome check` — list problems without building.
-- `tome build` — make the finished book in `dist/`.
+- `tome build` — make the finished book for the web, in `dist/web/`.
+- `tome build --target linux` (or `windows`, or `all`) — make a desktop app. The first time,
+  this downloads Electron (about 115 MB), which is then reused.
 - `tome contents` — write `contents.toml` to edit the chapter list.
 
 ## Chapters

@@ -3,6 +3,7 @@
 mod assets;
 mod bundle;
 mod compile;
+mod desktop;
 mod diagnostics;
 mod markdown;
 mod output;
@@ -44,11 +45,14 @@ enum Command {
     Build {
         #[arg(default_value = ".")]
         dir: PathBuf,
-        /// Output folder (default: dist inside the project)
+        /// Output folder (default: dist inside the project); each target gets a folder in it
         #[arg(long)]
         out: Option<PathBuf>,
         #[arg(long, value_enum, default_value_t = Target::Web)]
         target: Target,
+        /// Processor for desktop builds
+        #[arg(long, value_enum, default_value_t = Arch::X64)]
+        arch: Arch,
         /// Write only book.json and its assets, without the runtime
         #[arg(long)]
         bundle_only: bool,
@@ -73,14 +77,22 @@ enum Command {
     },
 }
 
-#[derive(Clone, Copy, ValueEnum)]
+#[derive(Clone, Copy, PartialEq, ValueEnum)]
 enum Target {
     /// A folder to host on any web server
     Web,
-    /// A Linux desktop app (not yet available)
+    /// A Linux desktop app
     Linux,
-    /// A Windows desktop app (not yet available)
+    /// A Windows desktop app
     Windows,
+    /// All of the above
+    All,
+}
+
+#[derive(Clone, Copy, ValueEnum)]
+enum Arch {
+    X64,
+    Arm64,
 }
 
 fn main() -> ExitCode {
@@ -105,10 +117,7 @@ fn run(cli: Cli) -> Result<ExitCode> {
             let compiled = compile::compile(&dir);
             Ok(report(&compiled.diagnostics, &dir, "Checked"))
         }
-        Command::Build { dir, out, target, bundle_only } => {
-            if !matches!(target, Target::Web) {
-                bail!("desktop builds aren't available yet; use --target web");
-            }
+        Command::Build { dir, out, target, arch, bundle_only } => {
             let compiled = compile::compile(&dir);
             let code = report(&compiled.diagnostics, &dir, "Built");
             if compiled.diagnostics.has_errors() {
@@ -117,11 +126,35 @@ fn run(cli: Cli) -> Result<ExitCode> {
             }
             let out = out.unwrap_or_else(|| dir.join("dist"));
             if bundle_only {
+                if target != Target::Web {
+                    bail!("--bundle-only only applies to --target web");
+                }
                 output::write_bundle_only(&compiled, &out)?;
-            } else {
-                output::write_web(&compiled, &out)?;
+                println!("Wrote {}", out.display());
+                return Ok(code);
             }
-            println!("Wrote {}", out.display());
+
+            let arch = match arch {
+                Arch::X64 => desktop::Arch::X64,
+                Arch::Arm64 => desktop::Arch::Arm64,
+            };
+            if matches!(target, Target::Web | Target::All) {
+                let web = out.join("web");
+                output::write_web(&compiled, &web)?;
+                println!("Wrote {} (host it on any web server)", web.display());
+            }
+            for (wanted, platform) in [(Target::Linux, desktop::Platform::Linux), (Target::Windows, desktop::Platform::Windows)] {
+                if target == wanted || target == Target::All {
+                    let release = desktop::electron_release(platform, arch)?;
+                    let folder = out.join(format!("{}-{}", platform.name(), arch.name()));
+                    let archive = desktop::build(&compiled, &folder, platform, arch, &release)?;
+                    println!(
+                        "Wrote {} (the app, ready to run) and {} (to distribute)",
+                        folder.join(desktop::app_names(&compiled).product).display(),
+                        archive.display()
+                    );
+                }
+            }
             Ok(code)
         }
         Command::Preview { dir, port, open } => {

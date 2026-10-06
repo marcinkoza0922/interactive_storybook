@@ -370,15 +370,17 @@ One polished default theme ships with the MVP. A book with no theme configuratio
 
 | Target | MVP output |
 |---|---|
-| Web / PWA | Static folder, offline-capable via service worker. Hosting is the author's responsibility. |
-| Linux | Standalone Electron executable |
-| Windows | Standalone Electron executable (portable `.exe`) |
+| Web / PWA | `dist/web/`: a static folder. Hosting is the author's responsibility. (Offline support via a service worker is still to do.) |
+| Linux | `dist/linux-x64/`: the app folder, ready to run, plus a `.tar.gz` of it to distribute |
+| Windows | `dist/windows-x64/`: the app folder with `<Title>.exe`, plus a `.zip` of it to distribute |
 | macOS | Deferred (no test hardware) |
 | Mobile | Deferred; the PWA works in mobile browsers in the meantime |
 
-- The CLI may download Node/Electron on first desktop build; offline desktop builds are not an MVP requirement.
+- **No Node needed.** Desktop builds use Electron's official prebuilt release (pinned version, SHA-256 checksums built into `tome`), downloaded once and cached in the user's cache folder. The book's web build, a small main process and a `package.json` replace Electron's default app, and the executable is renamed after the book. Because this is pure file assembly, Windows builds can be made on Linux. `--target all` builds every target; `--arch arm64` builds for ARM.
+- **The desktop shell** serves the book from a custom secure origin (`app://book/`) rather than `file://`, so `fetch`, `localStorage` and media byte ranges work as on the web. Each book stores its data in its own folder (`tome-books/<book id>` in the platform's app-data directory). Audio may start without a click (so a controller alone can start the book). There's no menu bar; F11 or Alt+Enter toggles full screen. External links open in the reader's browser. One instance runs at a time.
 - Installers (`.msi`, `.deb`, AppImage, Flatpak) are post-MVP.
-- Implementation risk to verify early: producing the Windows build from Linux (exe metadata/icon editing tools often need Wine).
+- Not yet done: a custom icon and version information on the Windows `.exe` (setting them needs `rcedit`, which runs under Wine on Linux), and code signing.
+- Known risk: on Linux distributions that restrict unprivileged user namespaces (e.g. Ubuntu 24.04+ with AppArmor), Electron's sandbox can't start from a portable folder unless `chrome-sandbox` is made setuid root. AppImage or `.deb` packaging is the usual fix.
 
 ---
 

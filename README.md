@@ -29,7 +29,8 @@ Then:
 
 ```sh
 target/release/tome preview examples/the-uneven-bell --open   # read it with live reload
-target/release/tome build examples/the-uneven-bell            # writes examples/the-uneven-bell/dist
+target/release/tome build examples/the-uneven-bell            # web build in examples/the-uneven-bell/dist/web
+target/release/tome build examples/the-uneven-bell --target all   # plus Linux and Windows apps
 target/release/tome new my-book                              # start a new book
 ```
 

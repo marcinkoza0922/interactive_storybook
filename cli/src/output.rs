@@ -21,14 +21,18 @@ pub fn write_web(compiled: &Compiled, out: &Path) -> Result<()> {
     prepare(out)?;
     RUNTIME.extract(out).with_context(|| format!("couldn't write the runtime to {}", out.display()))?;
     write_book(compiled, &out.join("book"))?;
-    fs::write(out.join(MARKER), "Built by tome. This folder is replaced on every build.\n")?;
-    Ok(())
+    mark(out)
 }
 
 /// Just `book.json` and its assets, e.g. for the runtime's development server.
 pub fn write_bundle_only(compiled: &Compiled, out: &Path) -> Result<()> {
     prepare(out)?;
     write_book(compiled, out)?;
+    mark(out)
+}
+
+/// Record that tome made this folder, so the next build may replace it.
+pub fn mark(out: &Path) -> Result<()> {
     fs::write(out.join(MARKER), "Built by tome. This folder is replaced on every build.\n")?;
     Ok(())
 }
@@ -43,7 +47,7 @@ fn write_book(compiled: &Compiled, book: &Path) -> Result<()> {
 }
 
 /// Empty the output folder, refusing to touch one tome didn't create.
-fn prepare(out: &Path) -> Result<()> {
+pub fn prepare(out: &Path) -> Result<()> {
     if out.exists() {
         let is_ours = out.join(MARKER).is_file();
         let is_empty = fs::read_dir(out)?.next().is_none();
