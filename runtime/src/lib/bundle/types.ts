@@ -69,13 +69,22 @@ export interface Block {
   cues?: Cue[]
 }
 
-export type EntranceEffect = 'fade'
+export type EntranceEffect = 'fade' | 'slide' | 'typewriter'
 
+/**
+ * Resting effects (pulse, breathe, tremble, gradient, wave) and named special styles aren't
+ * fields: they are `data-tome-rest` and `data-tome-style` attributes on elements in the block
+ * HTML, with optional parameters as CSS custom properties (`--tome-rest-duration`, ...).
+ */
 export interface Reveal {
   /** 1-based step at which this block appears. Blocks sharing a step appear together. */
   step: number
   effect: EntranceEffect
+  /** For typewriter: the time to type the whole block (default: 35ms per character). */
   duration_ms?: number
+  delay_ms?: number
+  /** A CSS easing function, e.g. "ease-in-out" or "cubic-bezier(...)". */
+  easing?: string
 }
 
 /** Paths in cues are relative to the bundle's book.json. Volumes are 0–1, default 1. */

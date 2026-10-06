@@ -47,7 +47,7 @@
             },
             {
               "id": "b3",
-              "html": "<p>The dockmaster looked her over once and returned to his ledger. “If you’re waiting for someone,” he said, “they’re not coming. Nobody meets the evening boat.”</p>"
+              "html": "<p>The dockmaster looked her over once and returned to his ledger. “If you’re waiting for someone,” he said, “<span data-tome-rest=\"wave\">they’re not coming. Nobody meets the evening boat.</span>”</p>"
             }
           ],
           "references": [
@@ -78,7 +78,7 @@
               "html": "<p>Inside, the air was cold and still.</p>",
               "reveal": {
                 "step": 1,
-                "effect": "fade"
+                "effect": "slide"
               },
               "cues": [
                 {
@@ -103,11 +103,10 @@
             },
             {
               "id": "b7",
-              "html": "<p>Beside it, in handwriting she knew better than her own, a note: <em>You came after all.</em></p>",
+              "html": "<p>Beside it, in handwriting she knew better than her own, a note:</p>",
               "reveal": {
                 "step": 3,
-                "effect": "fade",
-                "duration_ms": 1400
+                "effect": "fade"
               },
               "cues": [
                 {
@@ -117,6 +116,15 @@
                   "delay_ms": 800
                 }
               ]
+            },
+            {
+              "id": "b7-note",
+              "html": "<p><span data-tome-style=\"handwriting\">You came after all.</span></p>",
+              "reveal": {
+                "step": 4,
+                "effect": "typewriter",
+                "delay_ms": 300
+              }
             }
           ],
           "references": [
@@ -127,7 +135,7 @@
           "blocks": [
             {
               "id": "b8",
-              "html": "<p>Wren did not sleep that night. She sat with her back to the wall and the candle between her hands, listening to the house settle around her. Every so often the bell rang again, always the same uneven pattern, and every time she counted the strokes and came up with a different number.</p>",
+              "html": "<p>Wren did not sleep that night. She sat with her back to the wall and the candle between her hands, listening to the house settle around her. Every so often <span data-tome-rest=\"pulse\">the bell rang again</span>, always the same uneven pattern, and every time she counted the strokes and came up with a different number.</p>",
               "cues": [
                 {
                   "kind": "ambient",
@@ -157,7 +165,7 @@
             },
             {
               "id": "b11",
-              "html": "<p>It was not hard. The whole town seemed to lean toward it: every lane bent uphill, every roof sloped the same way, as if the place had been built by people who wanted to be sure they could always find their way to the top of the cliff. The lighthouse stood there, white and windowless, and the sound came from inside it.</p>"
+              "html": "<p>It was not hard. The whole town seemed to lean toward it: every lane bent uphill, every roof sloped the same way, as if the place had been built by people who wanted to be sure they could always find their way to the top of the cliff. The lighthouse stood there, white and windowless, and <span data-tome-rest=\"breathe\">the sound came from inside it</span>.</p>"
             }
           ],
           "references": [
@@ -202,12 +210,12 @@
               "html": "<p>“Which daughter?”</p>",
               "reveal": {
                 "step": 1,
-                "effect": "fade"
+                "effect": "typewriter"
               }
             },
             {
               "id": "b15",
-              "html": "<p>For the first time, something moved behind his eyes.</p>",
+              "html": "<p>For the first time, <span data-tome-rest=\"tremble\">something moved</span> behind his eyes.</p>",
               "reveal": {
                 "step": 2,
                 "effect": "fade"
@@ -238,7 +246,7 @@
             },
             {
               "id": "b17",
-              "html": "<p>At the top there was no lamp. There was only the bell, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, a coat exactly like her own.</p>",
+              "html": "<p>At the top there was no lamp. There was only <span data-tome-rest=\"gradient\">the bell</span>, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, <span data-tome-style=\"whisper\">a coat exactly like her own</span>.</p>",
               "reveal": {
                 "step": 1,
                 "effect": "fade"

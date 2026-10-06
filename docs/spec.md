@@ -305,6 +305,8 @@ Resting animations persist while the text is on screen and are present regardles
 
 Per-character effects (wave, tremble) split text into spans for rendering; the runtime must keep the underlying text intact for screen readers and text selection (e.g. a visually hidden plain copy, with the animated spans `aria-hidden`).
 
+**Bundle contract.** Entrance effects are the block's `reveal` (`effect`, `duration_ms`, `delay_ms`, `easing`). For typewriter, `duration_ms` is the time to type the whole block, defaulting to 35 ms per character. Resting effects and named styles are attributes in the block HTML (`data-tome-rest="wave"`, `data-tome-style="handwriting"`), on a paragraph for a whole block or on a span inline. Parameters are CSS custom properties on the element (`--tome-rest-duration`, `--tome-rest-amplitude`, `--tome-rest-scale`, `--tome-rest-min-opacity`, `--tome-rest-gradient`). The runtime does the character splitting when the book loads.
+
 ### 8.3 The advance action
 
 There is **one "advance" action**. Each press reveals the next step; when the page is fully revealed, the same action turns the page. If an animation is in progress, advance completes it instantly rather than skipping further.
@@ -315,7 +317,7 @@ There is **one "advance" action**. Each press reveals the next step; when the pa
 
 Named styles (e.g. `handwriting`, `whisper`) are defined in the theme and applied by directives. A named style may bundle typography with a resting animation.
 
-Readers can disable all special text, which renders it in the normal body style and disables **both** entrance and resting animations (content appears static, in its final state). Gradient shift is also disabled when the reader turns off color accents.
+Readers can disable all special text, which renders it in the normal body style and disables **both** entrance and resting animations (content appears static, in its final state). Gradient shift is also disabled when the reader turns off color accents. The runtime applies these settings as `data-special-text="off"` and `data-accents="off"` on the root element, so themes and custom CSS can respond to them too.
 
 ---
 

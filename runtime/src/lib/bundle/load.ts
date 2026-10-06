@@ -1,3 +1,4 @@
+import { prepareKinetic } from './kinetic'
 import { SUPPORTED_SCHEMA_VERSION, type Bundle } from './types'
 
 /**
@@ -38,6 +39,7 @@ export async function loadBundle(url: string): Promise<Bundle> {
   const base = new URL(url, document.baseURI).href
   for (const block of bundle.chapters.flatMap((c) => c.pages.flatMap((p) => p.blocks))) {
     block.html = resolveHtmlUrls(block.html, base)
+    prepareKinetic(block)
   }
   for (const section of (bundle.references ?? []).flatMap((r) => r.sections)) {
     section.html = resolveHtmlUrls(section.html, base)

@@ -34,7 +34,9 @@
       class:tome-entering={entering.has(block.id)}
       data-block-id={block.id}
       data-effect={block.reveal?.effect}
-      style:--tome-reveal-duration={block.reveal?.duration_ms ? `${block.reveal.duration_ms}ms` : undefined}
+      style:--tome-reveal-duration={block.reveal?.duration_ms !== undefined ? `${block.reveal.duration_ms}ms` : undefined}
+      style:--tome-reveal-delay={block.reveal?.delay_ms !== undefined ? `${block.reveal.delay_ms}ms` : undefined}
+      style:--tome-reveal-easing={block.reveal?.easing}
       onanimationend={(event) => event.target === event.currentTarget && onentered(block.id)}
     >
       {@html block.html}

@@ -17,6 +17,7 @@
   --tome-font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;
   --tome-font-heading: var(--tome-font-body);
   --tome-font-ui: system-ui, sans-serif;
+  --tome-font-handwriting: 'Segoe Print', 'Bradley Hand', 'URW Chancery L', 'Apple Chancery', cursive;
   --tome-font-size-body: 1.2rem;
   --tome-line-height: 1.6;
   --tome-paragraph-indent: 1.5em;
@@ -29,6 +30,9 @@
   /* Motion */
   --tome-reveal-duration: 700ms;
   --tome-reveal-easing: ease-out;
+  --tome-reveal-delay: 0ms;
+  --tome-slide-distance: 0.75em;
+  --tome-rest-gradient: linear-gradient(90deg, var(--tome-accent), #c08a2e, var(--tome-accent));
   --tome-illustration-fade: 900ms;
   --tome-page-fade: 900ms;
 }

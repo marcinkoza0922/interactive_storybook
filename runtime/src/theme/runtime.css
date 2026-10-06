@@ -221,8 +221,27 @@ body {
   visibility: hidden;
 }
 
+/* Entrance effects. The block's own animation always spans the whole entrance, so its
+   animationend marks the step as finished; advancing early removes .tome-entering, which
+   jumps every effect to its final state. */
+
 .tome-entering[data-effect='fade'] {
-  animation: tome-fade-in var(--tome-reveal-duration) var(--tome-reveal-easing) both;
+  animation: tome-fade-in var(--tome-reveal-duration) var(--tome-reveal-easing) var(--tome-reveal-delay) both;
+}
+
+.tome-entering[data-effect='slide'] {
+  animation: tome-slide-in var(--tome-reveal-duration) var(--tome-reveal-easing) var(--tome-reveal-delay) both;
+}
+
+.tome-entering[data-effect='typewriter'] {
+  animation: tome-hold var(--tome-reveal-duration) linear var(--tome-reveal-delay) both;
+}
+
+.tome-entering[data-effect='typewriter'] .tome-tw {
+  animation: tome-fade-in 1ms step-end both;
+  animation-delay: calc(
+    var(--tome-reveal-delay) + var(--tome-reveal-duration) * var(--tome-tw-index) / var(--tome-tw-count)
+  );
 }
 
 @keyframes tome-fade-in {
@@ -231,13 +250,167 @@ body {
   }
 }
 
-/* Near-instant rather than none, so animationend still fires and advancing stays one press per step. */
+@keyframes tome-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(var(--tome-slide-distance));
+  }
+}
+
+/* Changes nothing; exists so the typewriter block has an animation lasting the whole entrance. */
+@keyframes tome-hold {
+  from {
+    opacity: 1;
+  }
+}
+
+/* Resting effects: run for as long as the text is on screen, in either direction.
+   Parameters are custom properties an author can set per element or in custom CSS. */
+
+/* Inline-blocks inherit text-indent and would indent every word and letter. */
+.tome-word,
+.tome-char {
+  text-indent: 0;
+}
+
+.tome-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+[data-tome-rest='pulse'] {
+  animation: tome-pulse var(--tome-rest-duration, 2.4s) ease-in-out infinite;
+}
+
+[data-tome-rest='breathe'] .tome-word,
+[data-tome-rest='breathe']:not(:has(.tome-word)) {
+  animation: tome-breathe var(--tome-rest-duration, 3.2s) ease-in-out infinite;
+}
+
+[data-tome-rest='wave'] .tome-char {
+  display: inline-block;
+  animation: tome-wave var(--tome-rest-duration, 1.6s) ease-in-out infinite;
+  animation-delay: calc(var(--tome-char-index) * -0.09s);
+}
+
+[data-tome-rest='tremble'] .tome-char {
+  display: inline-block;
+  animation: tome-tremble var(--tome-rest-duration, 0.35s) linear infinite;
+  animation-delay: calc(var(--tome-char-index) * -0.07s);
+}
+
+[data-tome-rest='gradient'] {
+  background: var(--tome-rest-gradient) 0 0 / 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  color: transparent;
+  animation: tome-gradient var(--tome-rest-duration, 4s) linear infinite;
+}
+
+@keyframes tome-pulse {
+  50% {
+    opacity: var(--tome-rest-min-opacity, 0.45);
+  }
+}
+
+@keyframes tome-breathe {
+  50% {
+    transform: scale(var(--tome-rest-scale, 1.06));
+  }
+}
+
+@keyframes tome-wave {
+  50% {
+    transform: translateY(calc(-1 * var(--tome-rest-amplitude, 0.18em)));
+  }
+}
+
+@keyframes tome-tremble {
+  25% {
+    transform: translate(var(--tome-rest-amplitude, 0.035em), calc(-1 * var(--tome-rest-amplitude, 0.035em)));
+  }
+  50% {
+    transform: translate(calc(-1 * var(--tome-rest-amplitude, 0.035em)), var(--tome-rest-amplitude, 0.035em));
+  }
+  75% {
+    transform: translate(var(--tome-rest-amplitude, 0.035em), var(--tome-rest-amplitude, 0.035em));
+  }
+}
+
+/* Moving by exactly one gradient width makes the loop seamless. */
+@keyframes tome-gradient {
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* Named special styles. Themes add more by styling [data-tome-style='name']. */
+
+[data-tome-style='handwriting'] {
+  font-family: var(--tome-font-handwriting);
+  font-size: 1.1em;
+}
+
+[data-tome-style='whisper'] {
+  color: var(--tome-text-muted);
+  font-size: 0.9em;
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+/* Text kept for screen readers alongside per-character animation. */
+.tome-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * Reader settings (set on <html> by the settings screen) and motion preferences.
+ * Entrances become near-instant rather than none, so animationend still fires and
+ * advancing stays one press per step.
+ */
 @media (prefers-reduced-motion: reduce) {
   .tome-entering,
+  .tome-entering *,
   .tome-page-fade-in,
   .tome-illustration-image {
     animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
   }
+
+  [data-tome-rest],
+  [data-tome-rest] * {
+    animation: none !important;
+  }
+}
+
+:root[data-special-text='off'] .tome-entering,
+:root[data-special-text='off'] .tome-entering * {
+  animation-duration: 1ms !important;
+  animation-delay: 0ms !important;
+}
+
+:root[data-special-text='off'] [data-tome-rest],
+:root[data-special-text='off'] [data-tome-rest] * {
+  animation: none !important;
+}
+
+:root[data-special-text='off'] [data-tome-style] {
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+}
+
+:root[data-special-text='off'] [data-tome-rest='gradient'],
+:root[data-accents='off'] [data-tome-rest='gradient'] {
+  background: none;
+  color: inherit;
 }
 
 .tome-status-actions {
