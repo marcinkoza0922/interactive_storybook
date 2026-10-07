@@ -66,7 +66,7 @@ const block = (id: string, cues: Cue[], step?: number): Block => ({
 // ch1 p0: music A + rain.   ch1 p1: thunder sfx, then on reveal step 1 music B (delayed 500ms).
 // ch2 p0: rain stops, hard music stop.
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 't', title: 'T', author: 'A', language: 'en' },
   chapters: [
     {
@@ -74,8 +74,9 @@ const bundle: Bundle = {
       title: 'One',
       content_hash: 'h',
       pages: [
-        { blocks: [block('a', [{ kind: 'music', src: 'A' }, { kind: 'ambient', id: 'rain', src: 'rain' }])] },
+        { words: 0, blocks: [block('a', [{ kind: 'music', src: 'A' }, { kind: 'ambient', id: 'rain', src: 'rain' }])] },
         {
+          words: 0,
           blocks: [
             block('b', [{ kind: 'sfx', src: 'thunder' }]),
             block('c', [{ kind: 'music', src: 'B', fade_ms: 3000, delay_ms: 500 }], 1),
@@ -87,7 +88,7 @@ const bundle: Bundle = {
       id: 'two',
       title: 'Two',
       content_hash: 'h',
-      pages: [{ blocks: [block('d', [{ kind: 'ambient_stop', id: 'rain' }, { kind: 'music_stop', fade_ms: 0 }])] }],
+      pages: [{ words: 0, blocks: [block('d', [{ kind: 'ambient_stop', id: 'rain' }, { kind: 'music_stop', fade_ms: 0 }])] }],
     },
   ],
 }
@@ -203,8 +204,8 @@ describe('narration', () => {
         title: 'One',
         content_hash: 'h',
         pages: [
-          { blocks: [block('a', [voice('A')]), block('b', [voice('BB', 500)], 1), block('c', [voice('C')], 1)] },
-          { blocks: [block('d', [voice('D')])] },
+          { words: 0, blocks: [block('a', [voice('A')]), block('b', [voice('BB', 500)], 1), block('c', [voice('C')], 1)] },
+          { words: 0, blocks: [block('d', [voice('D')])] },
         ],
       },
     ],
@@ -323,6 +324,7 @@ describe('narration progress', () => {
         content_hash: 'h',
         pages: [
           {
+            words: 0,
             blocks: [
               block('a', [{ kind: 'voice', src: 'A', words: [0, 400] }]),
               block('b', [{ kind: 'voice', src: 'B', delay_ms: 300 }], 1),
@@ -363,9 +365,9 @@ describe('ducking', () => {
         title: 'One',
         content_hash: 'h',
         pages: [
-          { blocks: [block('a', [music, voice('A')]), block('b', [voice('B', 500)], 1)] },
-          { blocks: [block('c', [voice('C')])] },
-          { blocks: [block('d', [])] },
+          { words: 0, blocks: [block('a', [music, voice('A')]), block('b', [voice('B', 500)], 1)] },
+          { words: 0, blocks: [block('c', [voice('C')])] },
+          { words: 0, blocks: [block('d', [])] },
         ],
       },
     ],
@@ -440,6 +442,7 @@ describe('captions', () => {
         content_hash: 'h',
         pages: [
           {
+            words: 0,
             blocks: [
               block('a', [
                 { kind: 'music', src: 'harbour', caption: 'harbour music' },
@@ -448,6 +451,7 @@ describe('captions', () => {
             ],
           },
           {
+            words: 0,
             blocks: [
               block('b', [{ kind: 'sfx', src: 'bell', caption: 'a bell tolls' }]),
               block('c', [{ kind: 'music', src: 'harbour', volume: 0.5, caption: 'harbour music' }], 1),

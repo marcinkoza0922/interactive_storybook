@@ -5,7 +5,7 @@
 use serde::Serialize;
 use std::collections::BTreeMap;
 
-pub const SCHEMA_VERSION: u32 = 1;
+pub const SCHEMA_VERSION: u32 = 2;
 
 #[derive(Debug, Serialize)]
 pub struct Bundle {

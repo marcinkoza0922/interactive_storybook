@@ -11,14 +11,13 @@ import {
   wordsPerMinute,
 } from './pace'
 
-const page = (words?: number): Page => ({ blocks: [{ id: 'b', html: '' }], words })
+const page = (words: number): Page => ({ blocks: [{ id: 'b', html: '' }], words })
 
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 'test', title: 'Test', author: 'A', language: 'en' },
   chapters: [
     { id: 'one', title: 'One', content_hash: 'h1', pages: [page(230), page(460), page(690)] },
-    { id: 'old', title: 'Old', content_hash: 'h2', pages: [page()] },
   ],
 }
 
@@ -60,10 +59,6 @@ describe('minutesLeft', () => {
   it('counts from the start of the current page to the chapter end', () => {
     expect(minutesLeft(bundle, { chapter: 0, page: 0 }, emptyPace())).toBeCloseTo(6)
     expect(minutesLeft(bundle, { chapter: 0, page: 2 }, emptyPace())).toBeCloseTo(3)
-  })
-
-  it('has no estimate without word counts', () => {
-    expect(minutesLeft(bundle, { chapter: 1, page: 0 }, emptyPace())).toBeNull()
   })
 })
 

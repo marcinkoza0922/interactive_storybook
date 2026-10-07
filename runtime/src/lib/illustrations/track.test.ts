@@ -3,11 +3,11 @@ import type { Bundle, Page } from '../bundle/types'
 import { introducesIllustration, trackStates } from './track'
 
 const plate = (src: string) => ({ src, alt: src })
-const page = (illustration?: Page['illustration']): Page => ({ blocks: [], ...(illustration !== undefined ? { illustration } : {}) })
+const page = (illustration?: Page['illustration']): Page => ({ blocks: [], words: 0, ...(illustration !== undefined ? { illustration } : {}) })
 
 // ch1: [no art, A, (carry)]   ch2: [(carry), A again, null, B]
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 't', title: 'T', author: 'A', language: 'en' },
   chapters: [
     { id: 'one', title: 'One', content_hash: 'h', pages: [page(), page(plate('A')), page()] },

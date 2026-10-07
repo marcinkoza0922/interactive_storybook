@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest'
 import type { Bundle, Page } from '../bundle/types'
 import { foldQuery, search } from './search'
 
-const page = (...html: string[]): Page => ({ blocks: html.map((h, i) => ({ id: `b${Math.random()}-${i}`, html: h })) })
+const page = (...html: string[]): Page => ({ blocks: html.map((h, i) => ({ id: `b${Math.random()}-${i}`, html: h })), words: 0 })
 
 function book(...chapters: Page[][]): Bundle {
   return {
-    bundle_schema_version: 1,
+    bundle_schema_version: 2,
     book: { id: 't', title: 'T', author: 'A', language: 'en' },
     chapters: chapters.map((pages, i) => ({ id: `c${i}`, title: `Chapter ${i + 1}`, content_hash: 'h', pages })),
   }

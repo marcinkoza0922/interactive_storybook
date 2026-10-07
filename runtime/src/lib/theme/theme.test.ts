@@ -2,10 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Bundle } from '../bundle/types'
 import { backgroundKind, effectiveTheme, grainImage, themeCss } from './theme'
 
-const chapters = ['one', 'two', 'three'].map((id) => ({ id, title: id, content_hash: 'h', pages: [{ blocks: [] }] }))
+const chapters = ['one', 'two', 'three'].map((id) => ({ id, title: id, content_hash: 'h', pages: [{ blocks: [], words: 0 }] }))
 
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 't', title: 'T', author: 'A', language: 'en' },
   chapters,
   theme: {

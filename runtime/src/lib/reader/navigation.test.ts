@@ -4,11 +4,11 @@ import { advance, arriveBackward, back, type ReaderState } from './navigation'
 
 const plain = (id: string): Block => ({ id, html: `<p>${id}</p>` })
 const revealed = (id: string, step: number): Block => ({ ...plain(id), reveal: { step, effect: 'fade' } })
-const page = (...blocks: Block[]): Page => ({ blocks })
+const page = (...blocks: Block[]): Page => ({ blocks, words: 0 })
 
 // ch1: [plain page, page with 2 reveal steps]; ch2: [plain page]
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 'test', title: 'Test', author: 'A', language: 'en' },
   chapters: [
     { id: 'one', title: 'One', content_hash: 'h1', pages: [page(plain('a')), page(plain('b'), revealed('c', 1), revealed('d', 2))] },

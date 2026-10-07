@@ -36,11 +36,9 @@ export function withPage(pace: Pace, words: number, ms: number): Pace {
   return { words: total.words * keep, ms: total.ms * keep }
 }
 
-/** Minutes to read from the start of this page to the end of its chapter, or null without word counts. */
-export function minutesLeft(bundle: Bundle, position: Position, pace: Pace): number | null {
-  const pages = bundle.chapters[position.chapter].pages
-  if (!pages.some((p) => p.words)) return null
-  const words = pages.slice(position.page).reduce((sum, p) => sum + (p.words ?? 0), 0)
+/** Minutes to read from the start of this page to the end of its chapter. */
+export function minutesLeft(bundle: Bundle, position: Position, pace: Pace): number {
+  const words = bundle.chapters[position.chapter].pages.slice(position.page).reduce((sum, p) => sum + p.words, 0)
   return words / wordsPerMinute(pace)
 }
 

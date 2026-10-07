@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Bundle, Reference } from '../bundle/types'
 import { pageReferences, visibleEntry } from './gating'
 
-const chapters = ['one', 'two', 'three'].map((id) => ({ id, title: id, content_hash: 'h', pages: [{ blocks: [] }] }))
+const chapters = ['one', 'two', 'three'].map((id) => ({ id, title: id, content_hash: 'h', pages: [{ blocks: [], words: 0 }] }))
 
 const witch: Reference = {
   id: 'elara',
@@ -14,7 +14,7 @@ const witch: Reference = {
 }
 
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 't', title: 'T', author: 'A', language: 'en' },
   chapters,
   references: [
@@ -60,7 +60,7 @@ describe('visibleEntry', () => {
 
 describe('pageReferences', () => {
   it('lists unlocked references on the page in order and skips the rest', () => {
-    const page = { blocks: [], references: ['late', 'elara', 'unknown'] }
+    const page = { blocks: [], words: 0, references: ['late', 'elara', 'unknown'] }
     expect(pageReferences(bundle, page, 0).map((e) => e.id)).toEqual(['elara'])
     expect(pageReferences(bundle, page, 2).map((e) => e.id)).toEqual(['late', 'elara'])
   })

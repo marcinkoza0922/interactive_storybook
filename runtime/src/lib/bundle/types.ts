@@ -2,7 +2,7 @@
 // Keys are snake_case because the compiler (Rust/serde) emits them that way.
 
 /** The bundle schema version this runtime understands. Bump on breaking changes. */
-export const SUPPORTED_SCHEMA_VERSION = 1
+export const SUPPORTED_SCHEMA_VERSION = 2
 
 export interface Bundle {
   bundle_schema_version: number
@@ -56,7 +56,7 @@ export interface Chapter {
 export interface Page {
   blocks: Block[]
   /** Words of text on the page, footnotes aside, for estimating reading time. */
-  words?: number
+  words: number
   /**
    * Sets the illustration track from this page on: an image, or null to clear it.
    * Absent: the previous page's track illustration carries over.

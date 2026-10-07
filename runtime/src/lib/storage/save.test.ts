@@ -13,10 +13,10 @@ import {
   type SaveState,
 } from './save'
 
-const pages = (n: number) => Array.from({ length: n }, (_, i) => ({ blocks: [{ id: `b${i}`, html: '' }] }))
+const pages = (n: number) => Array.from({ length: n }, (_, i) => ({ blocks: [{ id: `b${i}`, html: '' }], words: 0 }))
 
 const bundle: Bundle = {
-  bundle_schema_version: 1,
+  bundle_schema_version: 2,
   book: { id: 'test', title: 'Test', author: 'A', language: 'en' },
   chapters: [
     { id: 'one', title: 'One', content_hash: 'h1', pages: pages(3) },

@@ -158,7 +158,7 @@
   $effect(() => clock.setPaused(menuOpen || panelOpen || windowHidden))
 
   function recordPace() {
-    if (freshPage && !progress.settings.auto_advance) progress.recordPage(page.words ?? 0, clock.elapsed())
+    if (freshPage && !progress.settings.auto_advance) progress.recordPage(page.words, clock.elapsed())
   }
 
   arrive(untrack(() => initial))
