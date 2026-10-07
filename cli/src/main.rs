@@ -96,6 +96,7 @@ enum Arch {
     Arm64,
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 fn main() -> ExitCode {
     match run(Cli::parse()) {
         Ok(code) => code,
@@ -106,6 +107,7 @@ fn main() -> ExitCode {
     }
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 fn run(cli: Cli) -> Result<ExitCode> {
     match cli.command {
         Command::New { dir, title } => {
@@ -118,46 +120,7 @@ fn run(cli: Cli) -> Result<ExitCode> {
             let compiled = compile::compile(&dir);
             Ok(report(&compiled.diagnostics, &dir, "Checked"))
         }
-        Command::Build { dir, out, target, arch, bundle_only } => {
-            let compiled = compile::compile(&dir);
-            let code = report(&compiled.diagnostics, &dir, "Built");
-            if compiled.diagnostics.has_errors() {
-                eprintln!("Nothing was written; fix the errors above first.");
-                return Ok(code);
-            }
-            let out = out.unwrap_or_else(|| dir.join("dist"));
-            if bundle_only {
-                if target != Target::Web {
-                    bail!("--bundle-only only applies to --target web");
-                }
-                output::write_bundle_only(&compiled, &out)?;
-                println!("Wrote {}", out.display());
-                return Ok(code);
-            }
-
-            let arch = match arch {
-                Arch::X64 => desktop::Arch::X64,
-                Arch::Arm64 => desktop::Arch::Arm64,
-            };
-            if matches!(target, Target::Web | Target::All) {
-                let web = out.join("web");
-                output::write_web(&compiled, &web)?;
-                println!("Wrote {} (host it on any web server)", web.display());
-            }
-            for (wanted, platform) in [(Target::Linux, desktop::Platform::Linux), (Target::Windows, desktop::Platform::Windows)] {
-                if target == wanted || target == Target::All {
-                    let release = desktop::electron_release(platform, arch)?;
-                    let folder = out.join(format!("{}-{}", platform.name(), arch.name()));
-                    let archive = desktop::build(&compiled, &folder, platform, arch, &release)?;
-                    println!(
-                        "Wrote {} (the app, ready to run) and {} (to distribute)",
-                        folder.join(desktop::app_names(&compiled).product).display(),
-                        archive.display()
-                    );
-                }
-            }
-            Ok(code)
-        }
+        Command::Build { dir, out, target, arch, bundle_only } => build(&dir, out, target, arch, bundle_only),
         Command::Preview { dir, port, open } => {
             preview::serve(&dir, port, open)?;
             Ok(ExitCode::SUCCESS)
@@ -174,7 +137,50 @@ fn run(cli: Cli) -> Result<ExitCode> {
     }
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
+fn build(dir: &Path, out: Option<PathBuf>, target: Target, arch: Arch, bundle_only: bool) -> Result<ExitCode> {
+    let compiled = compile::compile(dir);
+    let code = report(&compiled.diagnostics, dir, "Built");
+    if compiled.diagnostics.has_errors() {
+        eprintln!("Nothing was written; fix the errors above first.");
+        return Ok(code);
+    }
+    let out = out.unwrap_or_else(|| dir.join("dist"));
+    if bundle_only {
+        if target != Target::Web {
+            bail!("--bundle-only only applies to --target web");
+        }
+        output::write_bundle_only(&compiled, &out)?;
+        println!("Wrote {}", out.display());
+        return Ok(code);
+    }
+
+    let arch = match arch {
+        Arch::X64 => desktop::Arch::X64,
+        Arch::Arm64 => desktop::Arch::Arm64,
+    };
+    if matches!(target, Target::Web | Target::All) {
+        let web = out.join("web");
+        output::write_web(&compiled, &web)?;
+        println!("Wrote {} (host it on any web server)", web.display());
+    }
+    for (wanted, platform) in [(Target::Linux, desktop::Platform::Linux), (Target::Windows, desktop::Platform::Windows)] {
+        if target == wanted || target == Target::All {
+            let release = desktop::electron_release(platform, arch)?;
+            let folder = out.join(format!("{}-{}", platform.name(), arch.name()));
+            let archive = desktop::build(&compiled, &folder, platform, arch, &release)?;
+            println!(
+                "Wrote {} (the app, ready to run) and {} (to distribute)",
+                folder.join(desktop::app_names(&compiled).product).display(),
+                archive.display()
+            );
+        }
+    }
+    Ok(code)
+}
+
 /// Print diagnostics and a one-line summary; failure if there were errors.
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 fn report(diagnostics: &diagnostics::Diagnostics, dir: &Path, verb: &str) -> ExitCode {
     let root = dir.canonicalize().unwrap_or_else(|_| dir.to_path_buf());
     let rendered = diagnostics.render(&root);

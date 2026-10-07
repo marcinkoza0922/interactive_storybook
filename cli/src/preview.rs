@@ -49,6 +49,7 @@ const LIVE_RELOAD: &str = r#"<script>
 })()
 </script>"#;
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 pub fn serve(root: &Path, port: u16, open: bool) -> Result<()> {
     let root = root.canonicalize().with_context(|| format!("{} doesn't exist", root.display()))?;
     let state = Arc::new(RwLock::new(State::default()));
@@ -101,6 +102,7 @@ fn relevant(root: &Path, path: &Path) -> bool {
     !matches!(first, "dist" | ".git" | "target" | "node_modules") && !name.ends_with('~') && !name.starts_with(".#") && !name.ends_with(".swp")
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 fn rebuild(root: &Path, state: &RwLock<State>) {
     let compiled = compile(root);
     let report = compiled.diagnostics.render(root);
@@ -240,6 +242,7 @@ pub fn content_type(path: &str) -> &'static str {
     }
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 fn open_browser(url: &str) {
     let command = if cfg!(target_os = "windows") {
         std::process::Command::new("cmd").args(["/C", "start", "", url]).spawn()

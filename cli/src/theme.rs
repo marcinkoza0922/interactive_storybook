@@ -118,6 +118,23 @@ struct Loader<'a> {
     diagnostics: &'a mut Diagnostics,
 }
 
+fn read_source(file: &Path, diagnostics: &mut Diagnostics) -> Option<(String, ThemeSource)> {
+    let text = match std::fs::read_to_string(file) {
+        Ok(text) => text,
+        Err(error) => {
+            diagnostics.error(Some(file), None, format!("couldn't read the file: {error}"));
+            return None;
+        }
+    };
+    match toml::from_str(&text) {
+        Ok(source) => Some((text, source)),
+        Err(error) => {
+            diagnostics.error(Some(file), error.span().map(|s| line_of(&text, s.start)), error.message().to_string());
+            None
+        }
+    }
+}
+
 /// The theme, and the names of the special styles it defines. None if there's no theme file.
 pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostics: &mut Diagnostics) -> Option<(Theme, Vec<String>)> {
     let file = root.join("theme/theme.toml");
@@ -129,20 +146,7 @@ pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostic
             (Theme { custom_css: css, ..Theme::default() }, vec![])
         });
     }
-    let text = match std::fs::read_to_string(&file) {
-        Ok(text) => text,
-        Err(error) => {
-            diagnostics.error(Some(&file), None, format!("couldn't read the file: {error}"));
-            return None;
-        }
-    };
-    let source: ThemeSource = match toml::from_str(&text) {
-        Ok(source) => source,
-        Err(error) => {
-            diagnostics.error(Some(&file), error.span().map(|s| line_of(&text, s.start)), error.message().to_string());
-            return None;
-        }
-    };
+    let (text, source) = read_source(&file, diagnostics)?;
 
     let mut loader = Loader { file: file.clone(), text, assets, diagnostics };
     let mut theme = Theme {
@@ -157,8 +161,8 @@ pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostic
                 Some(FontFile { family: font.family, src, weight: font.weight, style: font.style })
             })
             .collect(),
-        backgrounds: source.backgrounds.map(|b| loader.backgrounds(b)),
-        decoration: source.decoration.map(|d| loader.decoration(d)),
+        backgrounds: source.backgrounds.as_ref().map(|b| loader.backgrounds(b)),
+        decoration: source.decoration.as_ref().map(|d| loader.decoration(d)),
         landing: source.landing.map(|l| loader.landing(l)),
         custom_css: match &source.custom_css {
             Some(css) => loader.asset(css, AssetKind::Css),
@@ -179,8 +183,8 @@ pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostic
             from,
             tokens: loader.tokens(source.tokens),
             styles: loader.styles(source.styles),
-            backgrounds: source.backgrounds.map(|b| loader.backgrounds(b)),
-            decoration: source.decoration.map(|d| loader.decoration(d)),
+            backgrounds: source.backgrounds.as_ref().map(|b| loader.backgrounds(b)),
+            decoration: source.decoration.as_ref().map(|d| loader.decoration(d)),
         });
     }
 
@@ -307,12 +311,12 @@ impl Loader<'_> {
         None
     }
 
-    fn backgrounds(&mut self, source: BackgroundsSource) -> Backgrounds {
-        Backgrounds { landing: source.landing.and_then(|b| self.background(b)), reading: source.reading.and_then(|b| self.background(b)) }
+    fn backgrounds(&mut self, source: &BackgroundsSource) -> Backgrounds {
+        Backgrounds { landing: source.landing.as_ref().and_then(|b| self.background(b)), reading: source.reading.as_ref().and_then(|b| self.background(b)) }
     }
 
-    fn background(&mut self, source: Clearable) -> Option<Option<Background>> {
-        let (background, line) = self.clearable::<BackgroundSource>(&source)?;
+    fn background(&mut self, source: &Clearable) -> Option<Option<Background>> {
+        let (background, line) = self.clearable::<BackgroundSource>(source)?;
         let Some(background) = background else { return Some(None) };
         if background.src.is_none() && background.color.is_none() {
             self.diagnostics.error(Some(&self.file), Some(line), "a background needs a `src` (image or video), a `color`, or both");
@@ -333,7 +337,7 @@ impl Loader<'_> {
         Some(Some(Background { src, color: background.color, poster, fit: background.fit, position: background.position, opacity: background.opacity }))
     }
 
-    fn decoration(&mut self, source: DecorationSource) -> Decoration {
+    fn decoration(&mut self, source: &DecorationSource) -> Decoration {
         Decoration {
             page_texture: source.page_texture.as_ref().and_then(|t| self.clearable_asset(t, AssetKind::Image)),
             chapter_ornament: source.chapter_ornament.as_ref().and_then(|o| self.clearable_asset(o, AssetKind::Image)),

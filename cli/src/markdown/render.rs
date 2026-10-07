@@ -145,7 +145,7 @@ pub fn add_attributes(html: &str, attributes: &str) -> String {
     if attributes.is_empty() {
         return html.to_string();
     }
-    match html.strip_prefix('<').and_then(|rest| rest.find(|c: char| c == '>' || c == ' ' || c == '/')) {
+    match html.strip_prefix('<').and_then(|rest| rest.find(['>', ' ', '/'])) {
         Some(end) => format!("{}{attributes}{}", &html[..end + 1], &html[end + 1..]),
         None => html.to_string(),
     }

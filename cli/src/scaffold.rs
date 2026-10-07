@@ -13,7 +13,19 @@ pub fn create(dir: &Path, title: &str) -> Result<()> {
     if dir.exists() && fs::read_dir(dir)?.next().is_some() {
         bail!("{} already exists and isn't empty", dir.display());
     }
-    let files: Vec<(&str, String)> = vec![
+    // Recordings are binary; everything else is text.
+    let binary: Vec<(&str, &[u8])> = vec![("assets/voice/oh-how-wonderful.ogg", VOICE)];
+    let files = text_files(title).into_iter().map(|(path, text)| (path, text.into_bytes())).chain(binary.into_iter().map(|(p, b)| (p, b.to_vec())));
+    for (path, contents) in files {
+        let path = dir.join(path);
+        fs::create_dir_all(path.parent().unwrap())?;
+        fs::write(&path, contents).with_context(|| format!("couldn't write {}", path.display()))?;
+    }
+    Ok(())
+}
+
+fn text_files(title: &str) -> Vec<(&'static str, String)> {
+    vec![
         (
             "book.toml",
             format!(
@@ -70,16 +82,7 @@ pub fn create(dir: &Path, title: &str) -> Result<()> {
         ("assets/voice/oh-how-wonderful.vtt", VOICE_TIMING.to_string()),
         ("assets/video/.gitkeep", String::new()),
         ("assets/fonts/.gitkeep", String::new()),
-    ];
-    // Recordings are binary; everything else is text.
-    let binary: Vec<(&str, &[u8])> = vec![("assets/voice/oh-how-wonderful.ogg", VOICE)];
-    let files = files.into_iter().map(|(path, text)| (path, text.into_bytes())).chain(binary.into_iter().map(|(p, b)| (p, b.to_vec())));
-    for (path, contents) in files {
-        let path = dir.join(path);
-        fs::create_dir_all(path.parent().unwrap())?;
-        fs::write(&path, contents).with_context(|| format!("couldn't write {}", path.display()))?;
-    }
-    Ok(())
+    ]
 }
 
 #[cfg(test)]

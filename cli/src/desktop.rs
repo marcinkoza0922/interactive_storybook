@@ -67,6 +67,7 @@ fn release_name(platform: Platform, arch: Arch) -> String {
 }
 
 /// The cached Electron release, downloading it first if needed.
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 pub fn electron_release(platform: Platform, arch: Arch) -> Result<PathBuf> {
     let cache = dirs::cache_dir().context("couldn't find a cache folder for downloads")?.join("tome").join("electron");
     fs::create_dir_all(&cache)?;
@@ -95,6 +96,7 @@ pub fn electron_release(platform: Platform, arch: Arch) -> Result<PathBuf> {
     Ok(file)
 }
 
+#[allow(clippy::print_stdout, clippy::print_stderr, reason = "the CLI reports to the terminal")]
 fn download(url: &str, to: &Path) -> Result<()> {
     let mut response = ureq::get(url).call()?;
     let total: Option<u64> = response.headers().get("content-length").and_then(|v| v.to_str().ok()?.parse().ok());

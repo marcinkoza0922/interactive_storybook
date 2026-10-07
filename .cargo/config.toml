@@ -1,0 +1,5 @@
+# Terse output: no "Compiling ..." lines, no ANSI colours, no progress bar.
+[term]
+quiet = true
+color = "never"
+progress.when = "never"

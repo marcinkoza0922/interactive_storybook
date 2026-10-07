@@ -62,6 +62,34 @@ pub struct Matcher {
 
 /// Load every references file in the project.
 pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostics: &mut Diagnostics) -> (Vec<Reference>, Matcher) {
+    let order: HashMap<&str, usize> = chapter_ids.iter().enumerate().map(|(i, id)| (id.as_str(), i)).collect();
+    let mut references = Vec::new();
+    let mut matcher = Matcher { references: Vec::new(), used: HashMap::new() };
+    let mut seen: HashMap<String, PathBuf> = HashMap::new();
+
+    for file in reference_files(root) {
+        let Some((text, parsed)) = read_file(&file, diagnostics) else { continue };
+        let mut loader = FileLoader { file: &file, text: &text, chapter_ids, order: &order, assets: &mut *assets, diagnostics: &mut *diagnostics };
+        for source in parsed.reference {
+            let id_line = loader.line(source.id.span());
+            if seen.insert(source.id.get_ref().clone(), file.clone()).is_some() {
+                let message = format!("there's already a reference with the ID `{}`", source.id.get_ref());
+                loader.diagnostics.error(Some(&file), Some(id_line), message);
+                continue;
+            }
+            if let Some((reference, aliases)) = loader.reference(source, id_line) {
+                matcher.references.push(aliases);
+                references.push(reference);
+            }
+        }
+    }
+
+    check_overlaps(&matcher, diagnostics);
+    (references, matcher)
+}
+
+/// references.toml, then everything in references/, in file-name order.
+fn reference_files(root: &Path) -> Vec<PathBuf> {
     let mut files: Vec<PathBuf> = Vec::new();
     let single = root.join("references.toml");
     if single.is_file() {
@@ -72,108 +100,120 @@ pub fn load(root: &Path, chapter_ids: &[String], assets: &mut Assets, diagnostic
         more.sort();
         files.extend(more);
     }
+    files
+}
 
-    let order: HashMap<&str, usize> = chapter_ids.iter().enumerate().map(|(i, id)| (id.as_str(), i)).collect();
-    let mut references = Vec::new();
-    let mut matcher = Matcher { references: Vec::new(), used: HashMap::new() };
-    let mut seen: HashMap<String, PathBuf> = HashMap::new();
-
-    for file in files {
-        let text = match std::fs::read_to_string(&file) {
-            Ok(text) => text,
-            Err(error) => {
-                diagnostics.error(Some(&file), None, format!("couldn't read the file: {error}"));
-                continue;
-            }
-        };
-        let parsed: ReferencesFile = match toml::from_str(&text) {
-            Ok(parsed) => parsed,
-            Err(error) => {
-                diagnostics.error(Some(&file), error.span().map(|s| line_of(&text, s.start)), error.message().to_string());
-                continue;
-            }
-        };
-        let line = |span: std::ops::Range<usize>| line_of(&text, span.start);
-
-        for source in parsed.reference {
-            let id = source.id.get_ref().clone();
-            let id_line = line(source.id.span());
-            if seen.insert(id.clone(), file.clone()).is_some() {
-                diagnostics.error(Some(&file), Some(id_line), format!("there's already a reference with the ID `{id}`"));
-                continue;
-            }
-            if source.section.is_empty() {
-                diagnostics.error(Some(&file), Some(id_line), format!("the reference `{id}` has no sections")).help =
-                    Some("add a [[reference.section]] with `from`, `title` and `text`".into());
-                continue;
-            }
-
-            let mut aliases: Vec<Alias> = source.matches.iter().map(|m| Alias { text: m.clone(), from_chapter: 0, file: file.clone(), line: id_line }).collect();
-            let mut sections = Vec::new();
-            let mut first_chapter = usize::MAX;
-
-            for section in source.section {
-                let from = section.from.get_ref().clone();
-                let from_line = line(section.from.span());
-                let Some(&chapter) = order.get(from.as_str()) else {
-                    diagnostics.error(Some(&file), Some(from_line), format!("there's no chapter with the ID `{from}`")).help =
-                        Some(format!("chapter IDs are: {}", chapter_ids.join(", ")));
-                    continue;
-                };
-                first_chapter = first_chapter.min(chapter);
-
-                let mode = section.mode.as_ref().map(|m| m.get_ref().clone());
-                if let Some(mode) = &mode {
-                    if mode != "replace" && mode != "append" {
-                        diagnostics.error(Some(&file), Some(line(section.mode.as_ref().unwrap().span())), format!("`mode` must be \"replace\" or \"append\", not \"{mode}\""));
-                    }
-                }
-
-                let image = section.image.as_ref().and_then(|image| match assets.resolve(image.get_ref(), &file, AssetKind::Image) {
-                    Ok(src) => {
-                        let alt = section.image_alt.clone().unwrap_or_default();
-                        if alt.trim().is_empty() {
-                            diagnostics.warning(Some(&file), Some(line(image.span())), "the image has no alt text").help =
-                                Some("add `image_alt = \"…\"` describing it for screen readers".into());
-                        }
-                        Some(ImageRef { src, alt })
-                    }
-                    Err(message) => {
-                        diagnostics.error(Some(&file), Some(line(image.span())), message);
-                        None
-                    }
-                });
-
-                aliases.extend(section.matches.iter().map(|m| Alias { text: m.clone(), from_chapter: chapter, file: file.clone(), line: from_line }));
-                sections.push((chapter, section.title, mode, render_markdown(&section.text), image, from, from_line));
-            }
-
-            // Sections apply in chapter order, whatever order they're written in.
-            sections.sort_by_key(|s| s.0);
-            if let Some(first) = sections.first() {
-                if first.1.is_none() {
-                    diagnostics.error(Some(&file), Some(first.6), format!("the first section of `{id}` needs a `title`")).help =
-                        Some("it's the name shown until a later section changes it".into());
-                }
-            }
-            if aliases.is_empty() {
-                diagnostics.warning(Some(&file), Some(id_line), format!("the reference `{id}` has no `match` names")).help =
-                    Some("without them it only appears where the text uses :ref[…]{id}".into());
-            }
-
-            matcher.references.push(ReferenceAliases { id: id.clone(), aliases });
-            references.push(Reference {
-                id,
-                sections: sections
-                    .into_iter()
-                    .map(|(_, title, mode, html, image, from, _)| ReferenceSection { from, mode, title, html, image })
-                    .collect(),
-            });
+fn read_file(file: &Path, diagnostics: &mut Diagnostics) -> Option<(String, ReferencesFile)> {
+    let text = match std::fs::read_to_string(file) {
+        Ok(text) => text,
+        Err(error) => {
+            diagnostics.error(Some(file), None, format!("couldn't read the file: {error}"));
+            return None;
+        }
+    };
+    match toml::from_str(&text) {
+        Ok(parsed) => Some((text, parsed)),
+        Err(error) => {
+            diagnostics.error(Some(file), error.span().map(|s| line_of(&text, s.start)), error.message().to_string());
+            None
         }
     }
+}
 
-    check_overlaps(&matcher, diagnostics);
-    (references, matcher)
+/// One references file being loaded.
+struct FileLoader<'a> {
+    file: &'a Path,
+    text: &'a str,
+    chapter_ids: &'a [String],
+    order: &'a HashMap<&'a str, usize>,
+    assets: &'a mut Assets,
+    diagnostics: &'a mut Diagnostics,
+}
+
+/// A loaded section, with the chapter it starts at and the aliases it adds.
+struct LoadedSection {
+    chapter: usize,
+    line: usize,
+    aliases: Vec<Alias>,
+    section: ReferenceSection,
+}
+
+impl FileLoader<'_> {
+    fn line(&self, span: std::ops::Range<usize>) -> usize {
+        line_of(self.text, span.start)
+    }
+
+    fn alias(&self, text: &str, from_chapter: usize, line: usize) -> Alias {
+        Alias { text: text.to_string(), from_chapter, file: self.file.to_path_buf(), line }
+    }
+
+    fn reference(&mut self, source: ReferenceSource, id_line: usize) -> Option<(Reference, ReferenceAliases)> {
+        let id = source.id.into_inner();
+        if source.section.is_empty() {
+            self.diagnostics.error(Some(self.file), Some(id_line), format!("the reference `{id}` has no sections")).help =
+                Some("add a [[reference.section]] with `from`, `title` and `text`".into());
+            return None;
+        }
+        let mut aliases: Vec<Alias> = source.matches.iter().map(|m| self.alias(m, 0, id_line)).collect();
+        let mut sections: Vec<LoadedSection> = source.section.into_iter().filter_map(|s| self.section(s)).collect();
+        aliases.extend(sections.iter_mut().flat_map(|s| s.aliases.drain(..)));
+
+        // Sections apply in chapter order, whatever order they're written in.
+        sections.sort_by_key(|s| s.chapter);
+        if let Some(first) = sections.first()
+            && first.section.title.is_none()
+        {
+            self.diagnostics.error(Some(self.file), Some(first.line), format!("the first section of `{id}` needs a `title`")).help =
+                Some("it's the name shown until a later section changes it".into());
+        }
+        if aliases.is_empty() {
+            self.diagnostics.warning(Some(self.file), Some(id_line), format!("the reference `{id}` has no `match` names")).help =
+                Some("without them it only appears where the text uses :ref[…]{id}".into());
+        }
+        let sections = sections.into_iter().map(|s| s.section).collect();
+        Some((Reference { id: id.clone(), sections }, ReferenceAliases { id, aliases }))
+    }
+
+    fn section(&mut self, section: SectionSource) -> Option<LoadedSection> {
+        let from = section.from.get_ref().clone();
+        let from_line = self.line(section.from.span());
+        let Some(&chapter) = self.order.get(from.as_str()) else {
+            self.diagnostics.error(Some(self.file), Some(from_line), format!("there's no chapter with the ID `{from}`")).help =
+                Some(format!("chapter IDs are: {}", self.chapter_ids.join(", ")));
+            return None;
+        };
+
+        let mode = section.mode.as_ref().map(|m| m.get_ref().clone());
+        if let Some(mode) = &mode
+            && mode != "replace"
+            && mode != "append"
+        {
+            let line = self.line(section.mode.as_ref().unwrap().span());
+            self.diagnostics.error(Some(self.file), Some(line), format!("`mode` must be \"replace\" or \"append\", not \"{mode}\""));
+        }
+        let image = section.image.as_ref().and_then(|image| self.image(image, section.image_alt.as_deref()));
+        let aliases = section.matches.iter().map(|m| self.alias(m, chapter, from_line)).collect();
+        let html = render_markdown(&section.text);
+        Some(LoadedSection { chapter, line: from_line, aliases, section: ReferenceSection { from, mode, title: section.title, html, image } })
+    }
+
+    fn image(&mut self, image: &Spanned<String>, alt: Option<&str>) -> Option<ImageRef> {
+        let line = self.line(image.span());
+        match self.assets.resolve(image.get_ref(), self.file, AssetKind::Image) {
+            Ok(src) => {
+                let alt = alt.unwrap_or_default().to_string();
+                if alt.trim().is_empty() {
+                    self.diagnostics.warning(Some(self.file), Some(line), "the image has no alt text").help =
+                        Some("add `image_alt = \"…\"` describing it for screen readers".into());
+                }
+                Some(ImageRef { src, alt })
+            }
+            Err(message) => {
+                self.diagnostics.error(Some(self.file), Some(line), message);
+                None
+            }
+        }
+    }
 }
 
 fn check_overlaps(matcher: &Matcher, diagnostics: &mut Diagnostics) {

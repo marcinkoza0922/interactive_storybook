@@ -40,82 +40,109 @@ impl Draft {
     }
 }
 
-/// Pages for a chapter. Breaks fall only between blocks: automatically before a block that
-/// would take the page over a limit, and wherever the author wrote `::pagebreak`.
-pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnostics: &mut Diagnostics) -> Vec<PaginatedPage> {
-    let mut drafts: Vec<Draft> = vec![Draft::default()];
-    let mut pending_cues: Vec<Cue> = Vec::new();
-    let mut pending_illustration: Option<(Option<ImageRef>, usize)> = None;
-    let mut pending_paper: Option<(String, usize)> = None;
+/// Fills drafts in order, holding cues and page settings until the block they belong with.
+struct Drafter<'a> {
+    drafts: Vec<Draft>,
+    cues: Vec<Cue>,
+    illustration: Option<(Option<ImageRef>, usize)>,
+    paper: Option<(String, usize)>,
+    limits: PageLimits,
+    file: &'a Path,
+    diagnostics: &'a mut Diagnostics,
+}
 
-    for item in chapter.items {
+impl Drafter<'_> {
+    fn item(&mut self, item: Item) {
         match item {
             Item::PageBreak => {
-                if !drafts.last().unwrap().blocks.is_empty() {
-                    drafts.push(Draft::default());
+                if !self.drafts.last().unwrap().blocks.is_empty() {
+                    self.drafts.push(Draft::default());
                 }
             }
             // Cues and illustration changes belong with the content that follows them.
-            Item::Cue { cue, .. } => pending_cues.push(cue),
-            Item::Illustration { image, line } => pending_illustration = Some((image, line)),
-            Item::Paper { name, line } => pending_paper = Some((name, line)),
-            Item::Block(block) => {
-                let current = drafts.last().unwrap();
-                if !current.blocks.is_empty() && current.would_exceed(&block, &limits) {
-                    drafts.push(Draft::default());
-                }
-                let current = drafts.last_mut().unwrap();
-                if current.blocks.is_empty() && current.would_exceed(&block, &limits) {
-                    diagnostics.warning(Some(file), Some(block.line), "this paragraph alone is longer than the page limit").help =
-                        Some("it gets a page to itself and scrolls; split it if that's not what you want".into());
-                }
-                if let Some((image, _)) = pending_illustration.take() {
-                    current.illustration = Some(image);
-                }
-                if let Some((paper, line)) = pending_paper.take() {
-                    if current.paper.as_ref().is_some_and(|p| p != &paper) {
-                        diagnostics.warning(Some(file), Some(line), "this page already has a paper; the later `::paper` wins");
-                    }
-                    current.paper = Some(paper);
-                }
-                current.add(block, std::mem::take(&mut pending_cues));
-            }
+            Item::Cue { cue, .. } => self.cues.push(cue),
+            Item::Illustration { image, line } => self.illustration = Some((image, line)),
+            Item::Paper { name, line } => self.paper = Some((name, line)),
+            Item::Block(block) => self.block(block),
         }
     }
 
-    // Anything after the last paragraph attaches to the end of the last page.
-    let last = drafts.iter_mut().rev().find(|d| !d.blocks.is_empty()).expect("chapters have text");
-    if let Some((image, line)) = pending_illustration {
-        if last.illustration.is_some() {
-            diagnostics.warning(Some(file), Some(line), "this illustration comes after the chapter's last paragraph and is ignored");
-        } else {
-            last.illustration = Some(image);
+    fn block(&mut self, block: ParsedBlock) {
+        let current = self.drafts.last().unwrap();
+        if !current.blocks.is_empty() && current.would_exceed(&block, &self.limits) {
+            self.drafts.push(Draft::default());
         }
+        let current = self.drafts.last_mut().unwrap();
+        if current.blocks.is_empty() && current.would_exceed(&block, &self.limits) {
+            self.diagnostics.warning(Some(self.file), Some(block.line), "this paragraph alone is longer than the page limit").help =
+                Some("it gets a page to itself and scrolls; split it if that's not what you want".into());
+        }
+        if let Some((image, _)) = self.illustration.take() {
+            current.illustration = Some(image);
+        }
+        if let Some((paper, line)) = self.paper.take() {
+            if current.paper.as_ref().is_some_and(|p| p != &paper) {
+                self.diagnostics.warning(Some(self.file), Some(line), "this page already has a paper; the later `::paper` wins");
+            }
+            current.paper = Some(paper);
+        }
+        current.add(block, std::mem::take(&mut self.cues));
     }
-    if let Some((_, line)) = pending_paper {
-        diagnostics.warning(Some(file), Some(line), "this `::paper` comes after the chapter's last paragraph and is ignored");
+
+    /// The drafts that have text. Anything after the last paragraph attaches to the end of the last page.
+    fn finish(mut self) -> Vec<Draft> {
+        self.drafts.retain(|d| !d.blocks.is_empty());
+        let last = self.drafts.last_mut().expect("chapters have text");
+        if let Some((image, line)) = self.illustration {
+            if last.illustration.is_some() {
+                self.diagnostics.warning(Some(self.file), Some(line), "this illustration comes after the chapter's last paragraph and is ignored");
+            } else {
+                last.illustration = Some(image);
+            }
+        }
+        if let Some((_, line)) = self.paper {
+            self.diagnostics.warning(Some(self.file), Some(line), "this `::paper` comes after the chapter's last paragraph and is ignored");
+        }
+        if !self.cues.is_empty() {
+            // An empty anchor block at the same step as the last paragraph, so the cues fire with it.
+            let reveal = last.blocks.last().and_then(|(b, _)| b.reveal.clone());
+            let anchor = ParsedBlock {
+                html: String::new(),
+                words: 0,
+                characters: 0,
+                lines: 0,
+                match_text: String::new(),
+                forced_refs: vec![],
+                reveal,
+                line: 0,
+            };
+            last.blocks.push((anchor, self.cues));
+        }
+        self.drafts
     }
-    if !pending_cues.is_empty() {
-        // An empty anchor block at the same step as the last paragraph, so the cues fire with it.
-        let reveal = last.blocks.last().and_then(|(b, _)| b.reveal.clone());
-        let anchor = ParsedBlock {
-            html: String::new(),
-            words: 0,
-            characters: 0,
-            lines: 0,
-            match_text: String::new(),
-            forced_refs: vec![],
-            reveal,
-            line: 0,
-        };
-        last.blocks.push((anchor, pending_cues));
+}
+
+/// Pages for a chapter. Breaks fall only between blocks: automatically before a block that
+/// would take the page over a limit, and wherever the author wrote `::pagebreak`.
+pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnostics: &mut Diagnostics) -> Vec<PaginatedPage> {
+    let mut drafter = Drafter {
+        drafts: vec![Draft::default()],
+        cues: Vec::new(),
+        illustration: None,
+        paper: None,
+        limits,
+        file,
+        diagnostics: &mut *diagnostics,
+    };
+    for item in chapter.items {
+        drafter.item(item);
     }
+    let drafts = drafter.finish();
 
     let chapter_paper = chapter.paper.map(|(name, _)| name);
     let mut next_block = 0;
     drafts
         .into_iter()
-        .filter(|d| !d.blocks.is_empty())
         .map(|draft| {
             // Reveal steps are numbered per page, in the order their groups first appear.
             let mut steps: HashMap<usize, u32> = HashMap::new();

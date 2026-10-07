@@ -111,68 +111,19 @@ pub fn parse_chapter(file: &Path, source: &str, assets: &mut Assets, diagnostics
     let (front, body, body_line) = split_front_matter(file, source, diagnostics)?;
     let mut parser = ChapterParser { file, assets, diagnostics, stack: Vec::new(), items: Vec::new(), next_group: 0 };
 
-    let mut segment = String::new();
-    let mut segment_line = body_line;
-    let mut fence: Option<String> = None;
-
-    for (index, line) in body.lines().enumerate() {
-        let line_number = body_line + index;
-        let trimmed = line.trim_start();
-
-        // Directives inside fenced code blocks are just text.
-        if let Some(open) = &fence {
-            if trimmed.starts_with(open.as_str()) {
-                fence = None;
-            }
-        } else if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
-            fence = Some(trimmed[..3].to_string());
-        } else {
-            match directive::parse_line(line) {
-                Ok(Some(directive)) => {
-                    parser.flush(&segment, segment_line);
-                    segment.clear();
-                    segment_line = line_number + 1;
-                    parser.directive(directive, line_number);
-                    continue;
-                }
-                Ok(None) => {}
-                Err(message) => {
-                    parser.diagnostics.error(Some(file), Some(line_number), message);
-                    segment_line = line_number + 1;
-                    parser.flush(&segment, segment_line);
-                    segment.clear();
-                    continue;
-                }
-            }
-        }
-        if segment.is_empty() {
-            segment_line = line_number;
-        }
-        segment.push_str(line);
-        segment.push('\n');
-    }
-    parser.flush(&segment, segment_line);
-
-    for (container, line) in &parser.stack {
-        let name = match container {
-            Container::Reveal { .. } => "reveal",
-            Container::Style(_) => "style",
-            Container::Fx(_) => "fx",
-        };
-        parser.diagnostics.error(Some(file), Some(*line), format!("`:::{name}` is never closed")).help = Some("end it with a line containing just `:::`".into());
-    }
+    parser.body(body, body_line);
+    parser.report_unclosed();
 
     let ChapterParser { mut items, assets, diagnostics, .. } = parser;
 
     // A leading `# Heading` is the chapter title, unless the front matter gives one.
     let mut title = front.title.clone();
-    if title.is_none() {
-        if let Some(Item::Block(first)) = items.first() {
-            if let Some(heading) = h1_text(first) {
-                title = Some(heading);
-                items.remove(0);
-            }
-        }
+    if title.is_none()
+        && let Some(Item::Block(first)) = items.first()
+        && let Some(heading) = h1_text(first)
+    {
+        title = Some(heading);
+        items.remove(0);
     }
 
     let id = match &front.id {
@@ -251,6 +202,62 @@ fn split_front_matter<'a>(file: &Path, source: &'a str, diagnostics: &mut Diagno
 }
 
 impl ChapterParser<'_> {
+    /// Split the body into Markdown segments and directives.
+    fn body(&mut self, body: &str, body_line: usize) {
+        let mut segment = String::new();
+        let mut segment_line = body_line;
+        let mut fence: Option<String> = None;
+
+        for (index, line) in body.lines().enumerate() {
+            let line_number = body_line + index;
+            let trimmed = line.trim_start();
+
+            // Directives inside fenced code blocks are just text.
+            if let Some(open) = &fence {
+                if trimmed.starts_with(open.as_str()) {
+                    fence = None;
+                }
+            } else if trimmed.starts_with("```") || trimmed.starts_with("~~~") {
+                fence = Some(trimmed[..3].to_string());
+            } else {
+                match directive::parse_line(line) {
+                    Ok(Some(directive)) => {
+                        self.flush(&segment, segment_line);
+                        segment.clear();
+                        segment_line = line_number + 1;
+                        self.directive(directive, line_number);
+                        continue;
+                    }
+                    Ok(None) => {}
+                    Err(message) => {
+                        self.diagnostics.error(Some(self.file), Some(line_number), message);
+                        segment_line = line_number + 1;
+                        self.flush(&segment, segment_line);
+                        segment.clear();
+                        continue;
+                    }
+                }
+            }
+            if segment.is_empty() {
+                segment_line = line_number;
+            }
+            segment.push_str(line);
+            segment.push('\n');
+        }
+        self.flush(&segment, segment_line);
+    }
+
+    fn report_unclosed(&mut self) {
+        for (container, line) in &self.stack {
+            let name = match container {
+                Container::Reveal { .. } => "reveal",
+                Container::Style(_) => "style",
+                Container::Fx(_) => "fx",
+            };
+            self.diagnostics.error(Some(self.file), Some(*line), format!("`:::{name}` is never closed")).help = Some("end it with a line containing just `:::`".into());
+        }
+    }
+
     fn directive(&mut self, directive: DirectiveLine, line: usize) {
         match directive {
             DirectiveLine::Close => {
@@ -373,12 +380,9 @@ impl ChapterParser<'_> {
             Some(name) => folder.join(name),
             None => ["vtt", "srt", "json"].iter().map(|ext| recording.with_extension(ext)).find(|p| p.is_file())?,
         };
-        let text = match std::fs::read_to_string(&file) {
-            Ok(text) => text,
-            Err(_) => {
-                self.error(line, format!("can't find the timing file `{}`", named.unwrap_or_default()));
-                return None;
-            }
+        let Ok(text) = std::fs::read_to_string(&file) else {
+            self.error(line, format!("can't find the timing file `{}`", named.unwrap_or_default()));
+            return None;
         };
         let extension = file.extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
         match crate::timing::parse(&text, &extension) {
@@ -393,38 +397,7 @@ impl ChapterParser<'_> {
 
     fn container(&mut self, name: &str, attrs: &Attrs, line: usize) -> Option<Container> {
         match name {
-            "reveal" => {
-                self.check_options(name, attrs, &["effect", "duration", "delay", "easing", "rest"], line);
-                let effect = attrs.get("effect").or(attrs.main(&["together"])).unwrap_or("fade").to_string();
-                if !ENTRANCE_EFFECTS.contains(&effect.as_str()) {
-                    self.error(line, format!("unknown entrance effect `{effect}`; the effects are {}", ENTRANCE_EFFECTS.join(", ")));
-                    return None;
-                }
-                let easing = attrs.get("easing").map(String::from);
-                if easing.as_deref().is_some_and(|e| e.contains(['"', '<', '>', ';', '{', '}'])) {
-                    self.error(line, "`easing` must be a CSS easing like `ease-in-out` or `cubic-bezier(0.2, 0, 0, 1)`");
-                    return None;
-                }
-                let rest = match attrs.get("rest") {
-                    Some(effect) => match rest_attributes(&Attrs::default(), effect) {
-                        Ok(html) => Some(html),
-                        Err(message) => {
-                            self.error(line, message);
-                            None
-                        }
-                    },
-                    None => None,
-                };
-                let together = attrs.has_word("together");
-                let spec = RevealSpec {
-                    effect,
-                    duration_ms: self.seconds(attrs, "duration", line),
-                    delay_ms: self.seconds(attrs, "delay", line),
-                    easing,
-                    group: self.new_group(),
-                };
-                Some(Container::Reveal { spec, together, rest })
-            }
+            "reveal" => self.reveal(attrs, line),
             "style" => match attrs.main(&[]).map(|s| css_name("style", s)) {
                 Some(Ok(style)) => Some(Container::Style(style.to_string())),
                 Some(Err(message)) => {
@@ -454,6 +427,39 @@ impl ChapterParser<'_> {
                 None
             }
         }
+    }
+
+    fn reveal(&mut self, attrs: &Attrs, line: usize) -> Option<Container> {
+        self.check_options("reveal", attrs, &["effect", "duration", "delay", "easing", "rest"], line);
+        let effect = attrs.get("effect").or(attrs.main(&["together"])).unwrap_or("fade").to_string();
+        if !ENTRANCE_EFFECTS.contains(&effect.as_str()) {
+            self.error(line, format!("unknown entrance effect `{effect}`; the effects are {}", ENTRANCE_EFFECTS.join(", ")));
+            return None;
+        }
+        let easing = attrs.get("easing").map(String::from);
+        if easing.as_deref().is_some_and(|e| e.contains(['"', '<', '>', ';', '{', '}'])) {
+            self.error(line, "`easing` must be a CSS easing like `ease-in-out` or `cubic-bezier(0.2, 0, 0, 1)`");
+            return None;
+        }
+        let rest = match attrs.get("rest") {
+            Some(effect) => match rest_attributes(&Attrs::default(), effect) {
+                Ok(html) => Some(html),
+                Err(message) => {
+                    self.error(line, message);
+                    None
+                }
+            },
+            None => None,
+        };
+        let together = attrs.has_word("together");
+        let spec = RevealSpec {
+            effect,
+            duration_ms: self.seconds(attrs, "duration", line),
+            delay_ms: self.seconds(attrs, "delay", line),
+            easing,
+            group: self.new_group(),
+        };
+        Some(Container::Reveal { spec, together, rest })
     }
 
     /// Turn the Markdown between directives into blocks.

@@ -92,35 +92,11 @@ pub fn compile(root: &Path) -> Compiled {
         illustrations: None,
     });
 
-    // Chapters, in file-name order.
-    let files = chapter_files(root);
-    if files.is_empty() {
-        diagnostics.error(Some(&root.join("manuscript")), None, "there are no chapters").help =
-            Some("add Markdown files like manuscript/01-first-chapter.md".into());
-    }
-    let mut chapters: Vec<(PathBuf, ParsedChapter)> = Vec::new();
-    let mut ids = HashSet::new();
-    for file in files {
-        let source = match std::fs::read_to_string(&file) {
-            Ok(source) => source,
-            Err(error) => {
-                diagnostics.error(Some(&file), None, format!("couldn't read the file: {error}"));
-                continue;
-            }
-        };
-        if let Some(chapter) = parse_chapter(&file, &source, &mut assets, &mut diagnostics) {
-            if !ids.insert(chapter.id.clone()) {
-                diagnostics.error(Some(&file), None, format!("another chapter already has the ID `{}`", chapter.id)).help =
-                    Some("set a different `id` in this chapter's front matter".into());
-                continue;
-            }
-            chapters.push((file, chapter));
-        }
-    }
+    let mut chapters = parse_chapters(root, &mut assets, &mut diagnostics);
     let chapter_ids: Vec<String> = chapters.iter().map(|(_, c)| c.id.clone()).collect();
 
     let theme = theme::load(root, &chapter_ids, &mut assets, &mut diagnostics);
-    let mut known_styles: BTreeSet<String> = BUILT_IN_STYLES.iter().map(|s| s.to_string()).collect();
+    let mut known_styles: BTreeSet<String> = BUILT_IN_STYLES.iter().map(std::string::ToString::to_string).collect();
     if let Some((_, styles)) = &theme {
         known_styles.extend(styles.iter().cloned());
     }
@@ -153,17 +129,7 @@ pub fn compile(root: &Path) -> Compiled {
     let bundle = Bundle {
         bundle_schema_version: bundle::SCHEMA_VERSION,
         book: BookMeta { id, title: book.title, author: book.author, language: book.language.unwrap_or_else(|| "en".into()) },
-        audio: book.audio.map(|a| AudioConfig {
-            restore_delay_ms: a.restore_delay.map(seconds_to_ms),
-            duck_level: a.ducking.filter(|level| {
-                let valid = (0.0..=1.0).contains(level);
-                if !valid {
-                    diagnostics.error(Some(&book_file), None, format!("`ducking` must be between 0 and 1, not {level}")).help =
-                        Some("it's the music and ambience volume under narration; 1 turns ducking off".into());
-                }
-                valid
-            }),
-        }),
+        audio: book.audio.as_ref().map(|a| audio_config(a, &book_file, &mut diagnostics)),
         illustrations: book.illustrations.map(|i| IllustrationConfig { linger_ms: seconds_to_ms(i.linger) }),
         chapters: bundle_chapters,
         contents,
@@ -173,18 +139,58 @@ pub fn compile(root: &Path) -> Compiled {
     Compiled { bundle, assets, diagnostics }
 }
 
+/// The project's chapters, in file-name order.
+fn parse_chapters(root: &Path, assets: &mut Assets, diagnostics: &mut Diagnostics) -> Vec<(PathBuf, ParsedChapter)> {
+    let files = chapter_files(root);
+    if files.is_empty() {
+        diagnostics.error(Some(&root.join("manuscript")), None, "there are no chapters").help =
+            Some("add Markdown files like manuscript/01-first-chapter.md".into());
+    }
+    let mut chapters: Vec<(PathBuf, ParsedChapter)> = Vec::new();
+    let mut ids = HashSet::new();
+    for file in files {
+        let source = match std::fs::read_to_string(&file) {
+            Ok(source) => source,
+            Err(error) => {
+                diagnostics.error(Some(&file), None, format!("couldn't read the file: {error}"));
+                continue;
+            }
+        };
+        if let Some(chapter) = parse_chapter(&file, &source, assets, diagnostics) {
+            if !ids.insert(chapter.id.clone()) {
+                diagnostics.error(Some(&file), None, format!("another chapter already has the ID `{}`", chapter.id)).help =
+                    Some("set a different `id` in this chapter's front matter".into());
+                continue;
+            }
+            chapters.push((file, chapter));
+        }
+    }
+    chapters
+}
+
+fn audio_config(audio: &AudioToml, book_file: &Path, diagnostics: &mut Diagnostics) -> AudioConfig {
+    AudioConfig {
+        restore_delay_ms: audio.restore_delay.map(seconds_to_ms),
+        duck_level: audio.ducking.filter(|level| {
+            let valid = (0.0..=1.0).contains(level);
+            if !valid {
+                diagnostics.error(Some(book_file), None, format!("`ducking` must be between 0 and 1, not {level}")).help =
+                    Some("it's the music and ambience volume under narration; 1 turns ducking off".into());
+            }
+            valid
+        }),
+    }
+}
+
 fn seconds_to_ms(seconds: f64) -> u64 {
     (seconds.max(0.0) * 1000.0).round() as u64
 }
 
 fn read_toml<T: serde::de::DeserializeOwned>(file: &Path, diagnostics: &mut Diagnostics) -> Option<T> {
-    let text = match std::fs::read_to_string(file) {
-        Ok(text) => text,
-        Err(_) => {
-            diagnostics.error(Some(file), None, "this isn't a book project: book.toml is missing").help =
-                Some("run `tome new <folder>` to start one".into());
-            return None;
-        }
+    let Ok(text) = std::fs::read_to_string(file) else {
+        diagnostics.error(Some(file), None, "this isn't a book project: book.toml is missing").help =
+            Some("run `tome new <folder>` to start one".into());
+        return None;
     };
     match toml::from_str(&text) {
         Ok(value) => Some(value),

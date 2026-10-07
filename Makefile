@@ -4,11 +4,13 @@
 #   make debug      the same, with a debug CLI: target/debug/tome
 #   make test       run all tests
 #   make check      type-check the runtime and lint-check the CLI
+#   make lint       run clippy on the CLI, failing on any warning
+#   make sizes      list Rust files over 400 lines
 #   make sample     compile the sample book into the runtime's dev fixture
 #   make preview    preview the sample book with live reload
 #   make clean      remove build output
 
-.PHONY: all release debug runtime test check sample preview clean
+.PHONY: all release debug runtime test check lint sizes sample preview clean
 
 all: release
 
@@ -33,6 +35,12 @@ test: runtime
 check: runtime/node_modules
 	cd runtime && npm run check
 	cargo check
+
+lint:
+	cargo clippy --all-targets -- -D warnings
+
+sizes:
+	scripts/check-file-length.sh
 
 sample: runtime
 	cd runtime && npm run sample
