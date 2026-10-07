@@ -719,8 +719,19 @@ body {
   margin: 0 0 0.75rem;
 }
 
-.tome-status-bookmark {
-  color: var(--tome-accent);
+/* Bookmark and highlight: icon-sized so they fit beside the other controls on phones. */
+.tome-status-icon {
+  display: inline-flex;
+  align-items: center;
+}
+
+.tome-status-icon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
 }
 
 /* Highlights */
@@ -778,6 +789,74 @@ body {
   font-family: var(--tome-font-heading);
   font-size: 1.5rem;
   font-weight: normal;
+}
+
+.tome-menu-close {
+  position: absolute;
+  inset-block-start: 0.75rem;
+  inset-inline-end: 0.75rem;
+  display: inline-flex;
+  padding: 0.35rem;
+  color: var(--tome-text-muted);
+}
+
+.tome-menu-close:hover {
+  color: var(--tome-text);
+}
+
+.tome-menu-close svg,
+.tome-menu-icon {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.tome-menu-close svg {
+  width: 1.4rem;
+  height: 1.4rem;
+}
+
+/* Keep long headings clear of the close button. */
+.tome-menu-heading {
+  padding-inline-end: 2rem;
+}
+
+/* Every main item leaves room for an icon, so labels line up whether or not they have one. */
+.tome-menu-main .tome-menu-item,
+.tome-menu-leave .tome-menu-item {
+  padding-inline-start: 2.25rem;
+}
+
+.tome-menu-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tome-menu-label .tome-menu-icon {
+  margin-inline-start: -1.9rem;
+}
+
+.tome-menu-leave {
+  margin-block-start: 3.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.tome-menu-leave .tome-menu-item {
+  border: none;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--tome-accent) 10%, transparent);
+  color: var(--tome-accent);
+}
+
+.tome-menu-leave .tome-menu-item:hover {
+  background: color-mix(in srgb, var(--tome-accent) 18%, transparent);
 }
 
 .tome-menu-back {

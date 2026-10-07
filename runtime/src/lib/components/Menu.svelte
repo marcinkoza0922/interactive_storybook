@@ -87,20 +87,38 @@
 </script>
 
 <dialog class="tome-menu" bind:this={dialog} onclose={onclose} aria-label="Menu">
+  <button class="tome-link-button tome-menu-close" onclick={() => dialog.close()} aria-label="Close menu" title="Close (Esc)">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+  </button>
   <div class="tome-menu-view">
     {#if view === 'main'}
       <h2 class="tome-menu-heading">{bundle.book.title}</h2>
-      <nav class="tome-menu-list">
-        <button class="tome-menu-item" onclick={() => dialog.close()}>Resume</button>
+      <nav class="tome-menu-list tome-menu-main">
         <button class="tome-menu-item" onclick={() => show('chapters')}>Chapters</button>
         <button class="tome-menu-item" onclick={() => show('bookmarks')}>
-          Bookmarks <span class="tome-menu-count">{progress.save.bookmarks.length || ''}</span>
+          <span class="tome-menu-label">
+            <svg class="tome-menu-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18l-6-4.5L6 21z" /></svg>
+            Bookmarks
+          </span>
+          <span class="tome-menu-count">{progress.save.bookmarks.length || ''}</span>
         </button>
         <button class="tome-menu-item" onclick={() => show('highlights')}>
           Highlights <span class="tome-menu-count">{highlights.length || ''}</span>
         </button>
         <button class="tome-menu-item" onclick={onreferences}>References</button>
-        <button class="tome-menu-item" onclick={() => show('settings')}>Settings</button>
+        <button class="tome-menu-item" onclick={() => show('settings')}>
+          <span class="tome-menu-label">
+            <svg class="tome-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path
+                d="M19.1 9.3L21.6 10.1L21.6 13.9L19.1 14.7L18.9 15.1L20.2 17.4L17.4 20.2L15.1 18.9L14.7 19.1L13.9 21.6L10.1 21.6L9.3 19.1L8.9 18.9L6.6 20.2L3.8 17.4L5.1 15.1L4.9 14.7L2.4 13.9L2.4 10.1L4.9 9.3L5.1 8.9L3.8 6.6L6.6 3.8L8.9 5.1L9.3 4.9L10.1 2.4L13.9 2.4L14.7 4.9L15.1 5.1L17.4 3.8L20.2 6.6L18.9 8.9z M15 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0z"
+              />
+            </svg>
+            Settings
+          </span>
+        </button>
+      </nav>
+      <!-- Leaving the book sits apart from the reading options. -->
+      <nav class="tome-menu-list tome-menu-leave">
         <button class="tome-menu-item" onclick={ontitle}>Title screen</button>
         {#if desktop}
           <button class="tome-menu-item" onclick={() => desktop?.quit()}>Exit</button>
@@ -168,7 +186,7 @@
           {currentBookmark ? 'Remove bookmark from this page' : 'Bookmark this page'}
         </button>
         {#if progress.save.bookmarks.length === 0}
-          <p class="tome-menu-empty">No bookmarks yet. Press B on any page to add one.</p>
+          <p class="tome-menu-empty">No bookmarks yet. Use the bookmark button below the page, or press B, to add one.</p>
         {:else}
           <ul class="tome-menu-list">
             {#each progress.save.bookmarks as bookmark (bookmark.id)}
@@ -193,7 +211,7 @@
       {:else if view === 'highlights'}
         <h2 class="tome-menu-heading">Highlights</h2>
         {#if highlights.length === 0}
-          <p class="tome-menu-empty">No highlights yet. Select text on a page, then choose Highlight (or press H).</p>
+          <p class="tome-menu-empty">No highlights yet. Select text on a page, then choose Highlight or the highlighter below the page (or press H).</p>
         {:else}
           <ul class="tome-menu-list">
             {#each highlights as highlight (highlight.id)}

@@ -46,6 +46,10 @@
   let turnNotice = $state(false)
   let turnNoticeTimer: ReturnType<typeof setTimeout> | undefined
   const TURN_CONFIRM_MS = 4000
+  /** A brief message confirming an action, e.g. adding a bookmark. */
+  let hint = $state<string | null>(null)
+  let hintTimer: ReturnType<typeof setTimeout> | undefined
+  const HINT_MS = 2500
   /** A text selection that can be turned into a highlight, and where to offer it. */
   let pendingHighlight = $state<{ anchor: HighlightAnchor; x: number; y: number } | null>(null)
 
@@ -159,6 +163,13 @@
   })
   onDestroy(() => clearTimeout(turnNoticeTimer))
 
+  function showHint(message: string) {
+    clearTimeout(hintTimer)
+    hint = message
+    hintTimer = setTimeout(() => (hint = null), HINT_MS)
+  }
+  onDestroy(() => clearTimeout(hintTimer))
+
   function onAdvance() {
     // Advancing from the illustration (lingering or toggled) returns to the text.
     if (showingIllustration) {
@@ -188,6 +199,17 @@
     if (position.chapter === reader.position.chapter && position.page === reader.position.page) return
     const seen = position.chapter <= furthestIndex(bundle, progress.save)
     go(seen ? arriveBackward(bundle, position) : { position, revealed: 0, direction: 'forward' })
+  }
+
+  function toggleBookmark() {
+    progress.toggleBookmark(reader.position)
+    showHint(bookmarked ? 'Page bookmarked' : 'Bookmark removed')
+  }
+
+  /** From the status bar, with nothing selected, explain how to highlight instead. */
+  function highlightOrExplain() {
+    if (pendingHighlight) createHighlight()
+    else showHint('Select text on the page to highlight it')
   }
 
   function createHighlight() {
@@ -338,7 +360,7 @@
         break
       case 'b':
       case 'B':
-        progress.toggleBookmark(reader.position)
+        toggleBookmark()
         break
       case 'h':
       case 'H':
@@ -402,9 +424,31 @@
 
       <footer class="tome-status">
         <span aria-live="polite">
-          {chapter.title}{#if bookmarked}<span class="tome-status-bookmark">{' · Bookmarked'}</span>{/if}
+          {chapter.title}
         </span>
         <span class="tome-status-actions">
+          <button
+            class="tome-link-button tome-status-icon"
+            onclick={toggleBookmark}
+            aria-pressed={bookmarked}
+            aria-label="Bookmark this page"
+            title={bookmarked ? 'Remove bookmark (B)' : 'Bookmark this page (B)'}
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M6 3h12v18l-6-4.5L6 21z" fill={bookmarked ? 'currentColor' : 'none'} />
+            </svg>
+          </button>
+          <button
+            class="tome-link-button tome-status-icon"
+            onpointerdown={(e) => e.preventDefault()}
+            onclick={highlightOrExplain}
+            aria-label="Highlight selected text"
+            title="Highlight selected text (H)"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M15 4l5 5-9 9H6v-5z M4 21h16" fill="none" />
+            </svg>
+          </button>
           {#if illustration && layout === 'single'}
             <button class="tome-link-button" onclick={toggleIllustration}>
               {showingIllustration ? 'Text' : 'Illustration'}
@@ -428,6 +472,8 @@
 
   {#if turnNotice}
     <p class="tome-toast" role="status">Narration is still playing — press again to turn the page.</p>
+  {:else if hint}
+    <p class="tome-toast" role="status">{hint}</p>
   {/if}
 
   {#if pendingHighlight}
