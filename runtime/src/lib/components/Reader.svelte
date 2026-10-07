@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick, untrack } from 'svelte'
+  import { onDestroy, onMount, tick, untrack } from 'svelte'
   import { MediaQuery, SvelteSet } from 'svelte/reactivity'
   import type { Bundle, Footnote } from '../bundle/types'
   import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
@@ -29,6 +29,8 @@
   interface Props {
     bundle: Bundle
     initial: ReaderState
+    /** A search match chosen on the title screen, marked once its page shows. */
+    match?: SearchMatch
     progress: Progress
     /** Narration is in progress, heard or passing silently: auto mode waits for it. */
     narrating: boolean
@@ -47,6 +49,7 @@
   let {
     bundle,
     initial,
+    match,
     progress,
     narrating,
     narrationAudible,
@@ -306,6 +309,10 @@
     CSS.highlights.set('tome-search', new Highlight(range))
     searchMarkTimer = setTimeout(clearSearchMark, SEARCH_MARK_MS)
   }
+
+  onMount(() => {
+    if (match) find(match)
+  })
 
   function toggleBookmark() {
     progress.toggleBookmark(reader.position)

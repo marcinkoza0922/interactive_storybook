@@ -126,6 +126,49 @@ body {
   min-width: 0;
 }
 
+/* Search and settings: a bar in the top corner, in the accent colors so it stands out
+   from any background without a theme setting of its own. */
+.tome-landing-tools {
+  position: fixed;
+  inset-block-start: 1rem;
+  inset-inline-end: 1rem;
+  display: flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--tome-accent);
+  box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.2);
+}
+
+.tome-landing-tool {
+  display: inline-flex;
+  padding: 0.5rem;
+  border: none;
+  border-radius: 999px;
+  background: none;
+  color: var(--tome-accent-contrast);
+  cursor: pointer;
+}
+
+.tome-landing-tool:hover {
+  background: color-mix(in srgb, var(--tome-accent-contrast) 18%, transparent);
+}
+
+.tome-landing-tool:focus-visible {
+  outline: 2px solid var(--tome-accent-contrast);
+  outline-offset: -3px;
+}
+
+.tome-landing-tool svg {
+  width: 1.4rem;
+  height: 1.4rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
 /* Bookmarks and highlights: smaller than the main buttons, side by side. */
 .tome-landing-shortcuts {
   display: flex;
@@ -886,12 +929,26 @@ body {
 .tome-menu {
   width: min(32rem, calc(100% - 2rem));
   max-height: min(42rem, calc(100% - 2rem));
-  padding: 1.5rem clamp(1rem, 4vw, 2rem) 2rem;
+  --tome-menu-padding-inline: clamp(1rem, 4vw, 2rem);
+  padding: 0.75rem var(--tome-menu-padding-inline) 2rem;
   border: 1px solid var(--tome-rule);
   border-radius: 4px;
   background: var(--tome-menu-bg);
   color: var(--tome-text);
   font-family: var(--tome-font-ui);
+}
+
+/* The view scrolls rather than the dialog, so the close button stays in reach. */
+.tome-menu[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.tome-menu-view {
+  min-height: 0;
+  /* Room for focus outlines, which the scrolling box would otherwise clip. */
+  margin: -0.5rem;
+  padding: 0.5rem;
   overflow-y: auto;
 }
 
@@ -906,13 +963,26 @@ body {
   font-weight: normal;
 }
 
+/* Back and close, fixed above the scrolling view. */
+.tome-menu-header {
+  display: flex;
+  flex: none;
+  align-items: center;
+  /* The view's -0.5rem margin pulls its scrollbar up; this leaves a gap below the close button. */
+  margin-block-end: 0.75rem;
+}
+
 .tome-menu-close {
-  position: absolute;
-  inset-block-start: 0.75rem;
-  inset-inline-end: 0.75rem;
   display: inline-flex;
+  margin-inline: auto -0.35rem;
   padding: 0.35rem;
   color: var(--tome-text-muted);
+}
+
+/* With a scrollbar taking space, centre the button above it (it ends 0.5rem past the
+   view's padding edge; the button is 2.1rem wide), without leaving the dialog's padding. */
+.tome-menu[data-scrollbar] .tome-menu-close {
+  margin-inline-end: max(calc(var(--tome-menu-scrollbar) / 2 - 1.55rem), -1 * var(--tome-menu-padding-inline));
 }
 
 .tome-menu-close:hover {
@@ -933,11 +1003,6 @@ body {
 .tome-menu-close svg {
   width: 1.4rem;
   height: 1.4rem;
-}
-
-/* Keep long headings clear of the close button. */
-.tome-menu-heading {
-  padding-inline-end: 2rem;
 }
 
 /* Every main item leaves room for an icon, so labels line up whether or not they have one. */
@@ -975,7 +1040,6 @@ body {
 }
 
 .tome-menu-back {
-  margin-block-end: 0.75rem;
   padding-inline: 0;
 }
 

@@ -6,6 +6,7 @@
   import { WebAudioEngine } from './lib/audio/webaudio'
   import { loadBundle } from './lib/bundle/load'
   import type { Bundle } from './lib/bundle/types'
+  import type { SearchMatch } from './lib/search/search'
   import Landing from './lib/components/Landing.svelte'
   import Reader from './lib/components/Reader.svelte'
   import ThemeLayer from './lib/components/ThemeLayer.svelte'
@@ -34,7 +35,7 @@
     | { kind: 'loading' }
     | { kind: 'error'; message: string }
     | { kind: 'landing'; bundle: Bundle; progress: Progress }
-    | { kind: 'reading'; bundle: Bundle; progress: Progress; initial: ReaderState }
+    | { kind: 'reading'; bundle: Bundle; progress: Progress; initial: ReaderState; match?: SearchMatch }
 
   let screen = $state<Screen>({ kind: 'loading' })
   let engine = $state.raw<WebAudioEngine | null>(null)
@@ -119,7 +120,7 @@
   }
 
   /** Called from the Begin/Continue click: the user gesture browsers require before audio. */
-  function startReading(bundle: Bundle, progress: Progress, initial: ReaderState) {
+  function startReading(bundle: Bundle, progress: Progress, initial: ReaderState, match?: SearchMatch) {
     interacted = true
     const engine = audioEngine()
     if (landingMusicPlaying) {
@@ -133,7 +134,7 @@
       onSoundscape: (list) => (captions.soundscape = list),
     })
     director.update(initial, 'enter')
-    screen = { kind: 'reading', bundle, progress, initial }
+    screen = { kind: 'reading', bundle, progress, initial, match }
   }
 
   function begin(bundle: Bundle, progress: Progress) {
@@ -152,6 +153,14 @@
     const initial = arriveByJump(bundle, progress.save, position)
     progress.setPosition(position)
     startReading(bundle, progress, initial)
+  }
+
+  /** Start reading at a search match chosen on the title screen; the reader marks it. */
+  function find(bundle: Bundle, progress: Progress, match: SearchMatch) {
+    const position = { chapter: match.chapter, page: match.page }
+    progress.setPosition(position)
+    // Shown fully revealed, so the match is there to mark.
+    startReading(bundle, progress, arriveBackward(bundle, position), match)
   }
 
   function exit(bundle: Bundle, progress: Progress) {
@@ -195,6 +204,7 @@
     oncontinue={() => position && resume(bundle, progress, position)}
     onbegin={() => begin(bundle, progress)}
     onjump={(position) => jump(bundle, progress, position)}
+    onfind={(match) => find(bundle, progress, match)}
   />
 {:else}
   {@const { bundle, progress } = screen}
@@ -206,6 +216,7 @@
     narrationAudible={narrationAudible(progress.settings)}
     narrationProgress={() => director?.narrationProgress() ?? null}
     initial={screen.initial}
+    match={screen.match}
     {assetUrl}
     onchange={(reader, change) => director?.update(reader, change)}
     onexit={() => exit(bundle, progress)}

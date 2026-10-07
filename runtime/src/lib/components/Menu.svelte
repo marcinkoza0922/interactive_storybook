@@ -23,8 +23,8 @@
     progress: Progress
     /** The page being read; null on the title screen. */
     position: Position | null
-    /** Open straight to one list, which Back then closes; the main view never shows. */
-    start?: List
+    /** Open straight to one list or Settings, which Back then closes; the main view never shows. */
+    start?: List | 'settings'
     onclose: () => void
     /** Go to a page; `seen` pages are shown fully revealed. */
     onjump: (position: Position) => void
@@ -57,6 +57,9 @@
   let deleteAnnotations = $state(false)
   let view = $state<View>(untrack(() => start) ?? 'main')
   let dialog: HTMLDialogElement
+  let scrollingView: HTMLElement
+  /** Width of the view's scrollbar, so the close button can sit above it; 0 for overlay scrollbars. */
+  let scrollbarWidth = $state(0)
 
   const settings = $derived(progress.settings)
   const currentBookmark = $derived(position && progress.bookmarkAt(position))
@@ -70,12 +73,19 @@
     dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus()
   })
 
+  // The scrollbar comes and goes with the content, which resizes the view's content box.
+  $effect(() => {
+    const observer = new ResizeObserver(() => (scrollbarWidth = scrollingView.offsetWidth - scrollingView.clientWidth))
+    observer.observe(scrollingView)
+    return () => observer.disconnect()
+  })
+
   async function show(next: View) {
     view = next
     await tick()
     const target =
       dialog.querySelector<HTMLElement>('[data-autofocus]') ??
-      dialog.querySelector<HTMLElement>('.tome-menu-view button, .tome-menu-view input')
+      dialog.querySelector<HTMLElement>('.tome-menu-back, .tome-menu-view :is(button, input)')
     target?.focus()
   }
 
@@ -114,11 +124,24 @@
   }
 </script>
 
-<dialog class="tome-menu" bind:this={dialog} onclose={onclose} aria-label="Menu">
-  <button class="tome-link-button tome-menu-close" onclick={() => dialog.close()} aria-label="Close menu" title="Close (Esc)">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
-  </button>
-  <div class="tome-menu-view">
+<dialog
+  class="tome-menu"
+  bind:this={dialog}
+  onclose={onclose}
+  aria-label="Menu"
+  data-scrollbar={scrollbarWidth > 0 || undefined}
+  style:--tome-menu-scrollbar="{scrollbarWidth}px"
+>
+  <!-- Above the scrolling view, so nothing scrolls under it. -->
+  <div class="tome-menu-header">
+    {#if view !== 'main'}
+      <button class="tome-link-button tome-menu-back" onclick={back}>← Back</button>
+    {/if}
+    <button class="tome-link-button tome-menu-close" onclick={() => dialog.close()} aria-label="Close menu" title="Close (Esc)">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+    </button>
+  </div>
+  <div class="tome-menu-view" bind:this={scrollingView}>
     {#if view === 'main'}
       <h2 class="tome-menu-heading">{bundle.book.title}</h2>
       <nav class="tome-menu-list tome-menu-main">
@@ -163,10 +186,6 @@
         {/if}
       </nav>
     {:else}
-      <button class="tome-link-button tome-menu-back" onclick={back}>
-        ← Back
-      </button>
-
       {#if view === 'chapters'}
         <h2 class="tome-menu-heading">Chapters</h2>
         <ol class="tome-menu-list tome-contents">
