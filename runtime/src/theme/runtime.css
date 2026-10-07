@@ -608,6 +608,38 @@ body {
   color: var(--tome-text-muted);
 }
 
+/*
+ * Sound captions sit between the page and the status bar, inside the text column, so they never
+ * cover the text, even on a spread. The strip keeps its height so captions coming and going
+ * don't move the page.
+ */
+.tome-captions {
+  flex: none;
+  box-sizing: border-box;
+  max-width: var(--tome-page-max-width);
+  width: 100%;
+  min-height: 3.2rem;
+  margin-inline: auto;
+  padding: 0.4rem var(--tome-page-padding);
+  background: var(--tome-caption-bg);
+  color: var(--tome-caption-text);
+  font-family: var(--tome-font-ui);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  text-align: center;
+}
+
+.tome-caption {
+  margin: 0;
+  font-style: italic;
+}
+
+.tome-captions-soundscape {
+  margin: 0;
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
 .tome-link-button {
   padding: 0.25rem 0.5rem;
   border: none;

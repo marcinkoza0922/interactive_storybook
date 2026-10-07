@@ -19,6 +19,9 @@
   --tome-narration-word-bg: color-mix(in srgb, var(--tome-accent) 24%, transparent);
   --tome-narration-paragraph-bg: color-mix(in srgb, var(--tome-accent) 9%, transparent);
   --tome-menu-bg: #f8f4ec;
+  /* The caption strip for sounds */
+  --tome-caption-bg: color-mix(in srgb, var(--tome-text) 8%, transparent);
+  --tome-caption-text: var(--tome-text);
 
   /* Typography */
   --tome-font-body: 'Iowan Old Style', 'Palatino Linotype', Palatino, Georgia, serif;

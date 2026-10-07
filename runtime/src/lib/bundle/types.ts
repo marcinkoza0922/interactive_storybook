@@ -98,13 +98,24 @@ export interface Reveal {
   easing?: string
 }
 
-/** Paths in cues are relative to the bundle's book.json. Volumes are 0–1, default 1. */
+/**
+ * Paths in cues are relative to the bundle's book.json. Volumes are 0–1, default 1. A caption
+ * describes the sound for readers with captions on.
+ */
 export type Cue =
-  | { kind: 'music'; src: string; volume?: number; fade_ms?: number; delay_ms?: number }
+  | { kind: 'music'; src: string; volume?: number; fade_ms?: number; delay_ms?: number; caption?: string }
   | { kind: 'music_stop'; fade_ms?: number; delay_ms?: number }
-  | { kind: 'ambient'; id: string; src: string; volume?: number; fade_ms?: number; delay_ms?: number }
+  | {
+      kind: 'ambient'
+      id: string
+      src: string
+      volume?: number
+      fade_ms?: number
+      delay_ms?: number
+      caption?: string
+    }
   | { kind: 'ambient_stop'; id: string; fade_ms?: number; delay_ms?: number }
-  | { kind: 'sfx'; src: string; volume?: number; delay_ms?: number }
+  | { kind: 'sfx'; src: string; volume?: number; delay_ms?: number; caption?: string }
   /** A line of narration: queued behind any line already playing on the page. */
   | {
       kind: 'voice'

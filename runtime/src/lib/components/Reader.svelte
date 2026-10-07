@@ -3,12 +3,14 @@
   import { MediaQuery, SvelteSet } from 'svelte/reactivity'
   import type { Bundle } from '../bundle/types'
   import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
+  import type { Captions } from '../audio/captions.svelte'
   import type { NarrationProgress } from '../audio/director'
   import { anchorSelection, highlightRanges, rangeIn, visibleTextRoot, type HighlightAnchor } from '../highlights/anchor'
   import { advance, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
   import type { Progress } from '../state/progress.svelte'
   import { arriveByJump, isHighlightCurrent } from '../storage/save'
+  import CaptionStrip from './CaptionStrip.svelte'
   import Menu from './Menu.svelte'
   import PageView from './PageView.svelte'
   import ReferencePanel from './ReferencePanel.svelte'
@@ -21,6 +23,8 @@
     narrating: boolean
     /** The reader can hear narration: only then does turning the page ask to confirm. */
     narrationAudible: boolean
+    /** Captions of the sounds playing, shown when the reader turns them on. */
+    captions: Captions
     /** Where the narration being heard is, for highlighting what it reads. */
     narrationProgress: () => NarrationProgress | null
     assetUrl: (src: string) => string
@@ -29,8 +33,18 @@
     onexit: () => void
   }
 
-  let { bundle, initial, progress, narrating, narrationAudible, narrationProgress, assetUrl, onchange, onexit }: Props =
-    $props()
+  let {
+    bundle,
+    initial,
+    progress,
+    narrating,
+    narrationAudible,
+    captions,
+    narrationProgress,
+    assetUrl,
+    onchange,
+    onexit,
+  }: Props = $props()
   const narrationHeard = $derived(narrating && narrationAudible)
 
   let reader = $state(untrack(() => initial))
@@ -420,6 +434,10 @@
           {assetUrl}
         />
       </main>
+
+      {#if progress.settings.captions}
+        <CaptionStrip {captions} />
+      {/if}
 
       <footer class="tome-status">
         <span aria-live="polite">

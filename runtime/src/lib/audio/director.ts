@@ -1,7 +1,7 @@
 import type { Block, Bundle, Cue } from '../bundle/types'
 import { pageAt, type Position, type ReaderState } from '../reader/navigation'
 import type { AudioEngine, VoiceHandle } from './engine'
-import { applyCue, pageEndStates, sameVoice, SILENCE, type AudioState } from './state'
+import { applyCue, pageEndStates, sameVoice, SILENCE, soundscape, type AudioState, type Voice } from './state'
 
 export const DEFAULT_RESTORE_DELAY_MS = 3000
 export const DEFAULT_MUSIC_FADE_IN_MS = 1000
@@ -14,6 +14,10 @@ export const DEFAULT_DUCK_LEVEL = 0.35
 /** Ducking dips quickly when a line starts and recovers gently when narration ends. */
 export const DUCK_ATTACK_MS = 300
 export const DUCK_RELEASE_MS = 800
+/** A sound effect's caption stays at least this long, however short the sound. */
+export const MIN_SFX_CAPTION_MS = 3000
+/** How long the caption of music or ambience that just started stays before fading. */
+export const START_CAPTION_MS = 5000
 
 export interface DirectorOptions {
   /**
@@ -23,6 +27,10 @@ export interface DirectorOptions {
   narrationEnabled?: () => boolean
   /** Called when narration starts or stops (a line playing, silent, waiting out its delay, or queued). */
   onNarrationChange?: (narrating: boolean) => void
+  /** A captioned sound started: an effect played, or music or an ambient layer began. */
+  onCaption?: (text: string, durationMs: number) => void
+  /** The captions of the music and ambience sounding now, whenever that changes. */
+  onSoundscape?: (captions: string[]) => void
 }
 
 type NarrationCue = Extract<Cue, { kind: 'voice' }>
@@ -165,19 +173,27 @@ export class AudioDirector {
       } else if (cue.delay_ms && cue.delay_ms > 0) {
         this.schedule(() => this.play(cue, blockId), cue.delay_ms)
       } else if (cue.kind === 'sfx') {
-        this.engine.playSfx(cue.src, cue.volume ?? 1)
+        this.playSfx(cue)
       } else {
         target = applyCue(target, cue)
         fades[voiceKey(cue)] = fadeFor(cue)
       }
     }
-    this.reconcile(target, fades)
+    this.reconcile(target, fades, true)
   }
 
   private play(cue: Cue, blockId: string): void {
     if (cue.kind === 'voice') this.narrate(cue, blockId)
-    else if (cue.kind === 'sfx') this.engine.playSfx(cue.src, cue.volume ?? 1)
-    else this.reconcile(applyCue(this.current, cue), { [voiceKey(cue)]: fadeFor(cue) })
+    else if (cue.kind === 'sfx') this.playSfx(cue)
+    else this.reconcile(applyCue(this.current, cue), { [voiceKey(cue)]: fadeFor(cue) }, true)
+  }
+
+  /** Play an effect, captioned for as long as it lasts. */
+  private playSfx(cue: Extract<Cue, { kind: 'sfx' }>): void {
+    this.engine.playSfx(cue.src, cue.volume ?? 1)
+    const { caption } = cue
+    if (!caption || !this.options.onCaption) return
+    this.engine.duration(cue.src).then((ms) => this.options.onCaption?.(caption, Math.max(ms, MIN_SFX_CAPTION_MS)))
   }
 
   private narrationEnabled(): boolean {
@@ -226,7 +242,7 @@ export class AudioDirector {
             clearTimeout(timer)
           },
         }
-        this.engine.voiceDuration(cue.src).then((ms) => {
+        this.engine.duration(cue.src).then((ms) => {
           if (!cancelled) timer = setTimeout(finished, ms)
         })
       }
@@ -257,8 +273,19 @@ export class AudioDirector {
     }
   }
 
-  /** Transition from what is sounding now to `target`, touching only voices that differ. */
-  private reconcile(target: AudioState, fades: Fades = {}): void {
+  /**
+   * Transition from what is sounding now to `target`, touching only voices that differ.
+   * `announce` captions the sounds that start; restoring a page's sound only updates the soundscape.
+   */
+  private reconcile(target: AudioState, fades: Fades = {}, announce = false): void {
+    if (announce) {
+      this.announceStart(this.current.music, target.music)
+      for (const [id, voice] of Object.entries(target.ambient)) this.announceStart(this.current.ambient[id], voice)
+    }
+    if (soundscape(this.current).join() !== soundscape(target).join()) {
+      this.options.onSoundscape?.(soundscape(target))
+    }
+
     if (!sameVoice(this.current.music, target.music)) {
       const fade = fades.music ?? (target.music ? DEFAULT_MUSIC_FADE_IN_MS : DEFAULT_MUSIC_FADE_OUT_MS)
       this.engine.setMusic(target.music, fade)
@@ -272,6 +299,11 @@ export class AudioDirector {
     }
 
     this.current = target
+  }
+
+  /** Caption a track or layer that starts, not one that keeps playing at another volume. */
+  private announceStart(before: Voice | null | undefined, after: Voice | null | undefined): void {
+    if (after?.caption && after.src !== before?.src) this.options.onCaption?.(after.caption, START_CAPTION_MS)
   }
 
   private stateAtEnd({ chapter, page }: Position): AudioState {

@@ -344,6 +344,14 @@
               </label>
             </div>
           {/each}
+          <label class="tome-option">
+            <input
+              type="checkbox"
+              checked={settings.captions}
+              onchange={(e) => progress.updateSettings({ captions: e.currentTarget.checked })}
+            />
+            Captions for music, ambience and sound effects
+          </label>
         </fieldset>
 
         <fieldset class="tome-fieldset">

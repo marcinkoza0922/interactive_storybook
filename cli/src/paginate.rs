@@ -217,7 +217,7 @@ mod tests {
     }
 
     fn sfx() -> Item {
-        Item::Cue { cue: Cue::Sfx { src: "bell".into(), volume: None, delay_ms: None }, line: 1 }
+        Item::Cue { cue: Cue::Sfx { src: "bell".into(), volume: None, delay_ms: None, caption: None }, line: 1 }
     }
 
     fn run(items: Vec<Item>, max_words: Option<usize>) -> (Vec<PaginatedPage>, Diagnostics) {

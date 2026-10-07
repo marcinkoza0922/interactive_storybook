@@ -426,7 +426,7 @@ mod tests {
         }
         std::fs::write(dir.path().join("book.toml"), "title = \"T\"\nauthor = \"A\"\n").unwrap();
         std::fs::create_dir_all(dir.path().join("manuscript")).unwrap();
-        std::fs::write(dir.path().join("manuscript/01-one.md"), "# One\n\n::ambient{rain}\n::ambient{wind}\nA.\n").unwrap();
+        std::fs::write(dir.path().join("manuscript/01-one.md"), "# One\n\n::ambient{rain caption=rain}\n::ambient{wind caption=wind}\nA.\n").unwrap();
         std::fs::write(dir.path().join("manuscript/02-two.md"), "# Two\n\n::ambient{stop}\n::music{stop}\nB.\n").unwrap();
 
         let compiled = compile(dir.path());

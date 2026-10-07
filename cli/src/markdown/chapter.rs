@@ -318,10 +318,10 @@ impl ChapterParser<'_> {
     fn cue(&mut self, name: &str, attrs: &Attrs, line: usize) -> Option<Cue> {
         let stop = attrs.has_word("stop");
         let allowed: &[&str] = match (name, stop) {
-            ("sfx", _) => &["volume", "delay"],
+            ("sfx", _) => &["volume", "delay", "caption"],
             ("voice", _) => &["volume", "delay", "timing"],
             (_, true) => &["fade", "delay", "id"],
-            _ => &["volume", "fade", "delay", "id"],
+            _ => &["volume", "fade", "delay", "id", "caption"],
         };
         self.check_options(name, attrs, allowed, line);
         let fade_ms = self.seconds(attrs, "fade", line);
@@ -355,19 +355,30 @@ impl ChapterParser<'_> {
                 return None;
             }
         };
+        let caption = if name == "voice" { None } else { self.caption(name, attrs, line) };
         Some(match name {
-            "music" => Cue::Music { src, volume, fade_ms, delay_ms },
+            "music" => Cue::Music { src, volume, fade_ms, delay_ms, caption },
             "ambient" => {
                 let id = attrs.get("id").unwrap_or(sound).to_string();
                 let id = id.rsplit('/').next().unwrap_or(&id).split('.').next().unwrap_or(&id).to_string();
-                Cue::Ambient { id, src, volume, fade_ms, delay_ms }
+                Cue::Ambient { id, src, volume, fade_ms, delay_ms, caption }
             }
             "voice" => {
                 let timing = self.voice_timing(sound, attrs.get("timing"), line);
                 Cue::Voice { src, volume, delay_ms, words: None, timing }
             }
-            _ => Cue::Sfx { src, volume, delay_ms },
+            _ => Cue::Sfx { src, volume, delay_ms, caption },
         })
+    }
+
+    /// A sound's caption for readers who can't hear it; a warning without one, like missing alt text.
+    fn caption(&mut self, name: &str, attrs: &Attrs, line: usize) -> Option<String> {
+        let caption = attrs.get("caption").map(str::trim).filter(|c| !c.is_empty());
+        if caption.is_none() {
+            self.diagnostics.warning(Some(self.file), Some(line), format!("the `::{name}` cue has no caption")).help =
+                Some("describe it for readers who can't hear it: `caption=\"a bell tolls, uneven\"`".into());
+        }
+        caption.map(str::to_string)
     }
 
     /// Word timings for a line of narration: the file named with `timing=` (relative to the
@@ -651,8 +662,25 @@ mod tests {
     }
 
     #[test]
+    fn captions_sounds_and_warns_when_one_has_none() {
+        let (chapter, diagnostics) = parse("# T\n\n::sfx{bell caption=\"a bell tolls, uneven\"}\n::ambient{rain}\nOne.\n");
+        let captions: Vec<_> = chapter
+            .unwrap()
+            .items
+            .into_iter()
+            .filter_map(|i| match i {
+                Item::Cue { cue: Cue::Sfx { caption, .. } | Cue::Ambient { caption, .. }, .. } => Some(caption),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(captions, [Some("a bell tolls, uneven".to_string()), None]);
+        assert_eq!(diagnostics.items.len(), 1, "{diagnostics:?}");
+        assert!(diagnostics.items[0].message.contains("no caption"));
+    }
+
+    #[test]
     fn parses_cues_breaks_and_illustrations_in_order() {
-        let source = "# T\n\n::music{harbour volume=0.8 fade=2}\n::ambient{rain}\nOne.\n\n::pagebreak\n::illustration{bridge alt=\"A bridge\"}\n::sfx{bell delay=1.5}\n::voice{line-1 delay=0.5}\nTwo.\n\n::ambient{stop}\n::music{stop fade=0}\n::illustration{none}\nThree.\n";
+        let source = "# T\n\n::music{harbour volume=0.8 fade=2 caption=music}\n::ambient{rain caption=rain}\nOne.\n\n::pagebreak\n::illustration{bridge alt=\"A bridge\"}\n::sfx{bell delay=1.5 caption=\"a bell\"}\n::voice{line-1 delay=0.5}\nTwo.\n\n::ambient{stop}\n::music{stop fade=0}\n::illustration{none}\nThree.\n";
         let (chapter, diagnostics) = parse(source);
         assert!(diagnostics.items.is_empty(), "{diagnostics:?}");
         let kinds: Vec<String> = chapter

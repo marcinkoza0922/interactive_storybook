@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from 'svelte'
   import { MediaQuery } from 'svelte/reactivity'
+  import { Captions } from './lib/audio/captions.svelte'
   import { AudioDirector } from './lib/audio/director'
   import { WebAudioEngine } from './lib/audio/webaudio'
   import { loadBundle } from './lib/bundle/load'
@@ -40,6 +41,8 @@
   let director: AudioDirector | null = null
   /** A line of narration is in progress or queued, heard or passing silently. */
   let narrating = $state(false)
+  /** Captions of the book's sounds, shown if the reader turns them on. */
+  const captions = new Captions()
   /** Landing music waits for the first interaction, which browsers require before audio. */
   let interacted = false
   let landingMusicPlaying = false
@@ -126,6 +129,8 @@
     director = new AudioDirector(bundle, engine, {
       narrationEnabled: () => narrationAudible(progress.settings),
       onNarrationChange: (value) => (narrating = value),
+      onCaption: (text, ms) => captions.show(text, ms),
+      onSoundscape: (list) => (captions.soundscape = list),
     })
     director.update(initial, 'enter')
     screen = { kind: 'reading', bundle, progress, initial }
@@ -152,6 +157,7 @@
   function exit(bundle: Bundle, progress: Progress) {
     director?.stop()
     director = null
+    captions.clear()
     narrating = false
     screen = { kind: 'landing', bundle, progress }
     playLandingMusic()
@@ -196,6 +202,7 @@
     {bundle}
     {progress}
     {narrating}
+    {captions}
     narrationAudible={narrationAudible(progress.settings)}
     narrationProgress={() => director?.narrationProgress() ?? null}
     initial={screen.initial}

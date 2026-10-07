@@ -102,6 +102,9 @@ pub enum Cue {
         fade_ms: Option<u64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         delay_ms: Option<u64>,
+        /// Shown to readers with captions on, in place of the sound.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        caption: Option<String>,
     },
     MusicStop {
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -118,6 +121,9 @@ pub enum Cue {
         fade_ms: Option<u64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         delay_ms: Option<u64>,
+        /// Shown to readers with captions on, in place of the sound.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        caption: Option<String>,
     },
     AmbientStop {
         id: String,
@@ -132,6 +138,9 @@ pub enum Cue {
         volume: Option<f64>,
         #[serde(skip_serializing_if = "Option::is_none")]
         delay_ms: Option<u64>,
+        /// Shown to readers with captions on, in place of the sound.
+        #[serde(skip_serializing_if = "Option::is_none")]
+        caption: Option<String>,
     },
     /// A line of narration, queued behind any line already playing on the page.
     Voice {

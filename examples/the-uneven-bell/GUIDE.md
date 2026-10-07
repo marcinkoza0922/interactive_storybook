@@ -76,6 +76,18 @@ Cues go on their own line. They play when the text after them appears. Name a fi
 
 Times are in seconds. Volume runs from 0 to 1.
 
+Give every music, ambience and sound-effect cue a caption, for readers who can't hear it
+(`tome check` warns when one is missing, as it does for missing alt text):
+
+```
+::sfx{bell caption="a bell tolls, uneven"}
+::ambient{rain caption="rain on the shutters"}
+```
+
+Readers who turn on Settings → Sound → Captions see them in a strip at the bottom of the
+page: an effect's caption while it plays, and music's or ambience's when it starts, with a
+quiet line of what is still sounding. Narration isn't captioned, since its text is the page.
+
 ## Narration
 
 Recorded lines go in `assets/voice/` (or `assets/audio/`) and play like the cues above, when

@@ -3,6 +3,8 @@ import type { Bundle, Cue } from '../bundle/types'
 export interface Voice {
   src: string
   volume: number
+  /** Shown to readers with captions on; not part of what makes two voices the same. */
+  caption?: string
 }
 
 /** What should be sounding continuously. One-shot sound effects aren't part of it. */
@@ -16,11 +18,11 @@ export const SILENCE: AudioState = { music: null, ambient: {} }
 export function applyCue(state: AudioState, cue: Cue): AudioState {
   switch (cue.kind) {
     case 'music':
-      return { ...state, music: { src: cue.src, volume: cue.volume ?? 1 } }
+      return { ...state, music: { src: cue.src, volume: cue.volume ?? 1, caption: cue.caption } }
     case 'music_stop':
       return { ...state, music: null }
     case 'ambient':
-      return { ...state, ambient: { ...state.ambient, [cue.id]: { src: cue.src, volume: cue.volume ?? 1 } } }
+      return { ...state, ambient: { ...state.ambient, [cue.id]: { src: cue.src, volume: cue.volume ?? 1, caption: cue.caption } } }
     case 'ambient_stop': {
       const { [cue.id]: _, ...rest } = state.ambient
       return { ...state, ambient: rest }
@@ -43,6 +45,12 @@ export function pageEndStates(bundle: Bundle): AudioState[][] {
       return state
     }),
   )
+}
+
+/** Captions of everything still sounding, ambience first: "rain · harbour music". */
+export function soundscape(state: AudioState): string[] {
+  const voices = [...Object.values(state.ambient), state.music]
+  return voices.flatMap((voice) => (voice?.caption ? [voice.caption] : []))
 }
 
 export function sameVoice(a: Voice | null | undefined, b: Voice | null | undefined): boolean {

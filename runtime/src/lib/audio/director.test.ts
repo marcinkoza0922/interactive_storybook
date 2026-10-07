@@ -38,7 +38,7 @@ class FakeEngine implements AudioEngine {
     this.ducks.push(`${level} ${fadeMs}`)
   }
   /** Each line lasts a second per letter of its name, so tests can tell them apart. */
-  voiceDuration(src: string) {
+  duration(src: string) {
     return Promise.resolve(src.length * 1000)
   }
   /** Finish the line playing now. */
@@ -426,6 +426,75 @@ describe('ducking', () => {
     engine.ducks = []
     director(narrated(1)).update(at(1), 'enter')
     expect(engine.ducks).toEqual([])
+  })
+})
+
+describe('captions', () => {
+  // p0: harbour music and rain, captioned.  p1: a bell, then on reveal music at another volume.
+  const captioned: Bundle = {
+    ...bundle,
+    chapters: [
+      {
+        id: 'one',
+        title: 'One',
+        content_hash: 'h',
+        pages: [
+          {
+            blocks: [
+              block('a', [
+                { kind: 'music', src: 'harbour', caption: 'harbour music' },
+                { kind: 'ambient', id: 'rain', src: 'rain', caption: 'rain' },
+              ]),
+            ],
+          },
+          {
+            blocks: [
+              block('b', [{ kind: 'sfx', src: 'bell', caption: 'a bell tolls' }]),
+              block('c', [{ kind: 'music', src: 'harbour', volume: 0.5, caption: 'harbour music' }], 1),
+            ],
+          },
+        ],
+      },
+    ],
+  }
+  let captions: string[]
+  let soundscapes: string[][]
+  let director: AudioDirector
+
+  beforeEach(() => {
+    vi.useFakeTimers()
+    captions = []
+    soundscapes = []
+    director = new AudioDirector(captioned, new FakeEngine(), {
+      onCaption: (text, ms) => captions.push(`${text} ${ms}`),
+      onSoundscape: (list) => soundscapes.push(list),
+    })
+  })
+
+  afterEach(() => vi.useRealTimers())
+
+  it('captions sounds as they start, effects for their length, and keeps a soundscape', async () => {
+    director.update(start, 'enter')
+    expect(captions).toEqual(['harbour music 5000', 'rain 5000'])
+    expect(soundscapes).toEqual([['rain', 'harbour music']])
+
+    const page2 = advance(captioned, start)!
+    director.update(page2, 'turn')
+    await vi.advanceTimersByTimeAsync(0)
+    expect(captions.at(-1)).toBe('a bell tolls 4000') // a second per letter of "bell"
+
+    director.update(advance(captioned, page2)!, 'reveal')
+    expect(captions).toHaveLength(3) // the same track at another volume isn't new
+    expect(soundscapes).toHaveLength(1)
+  })
+
+  it('going back captions no effects and restores the soundscape without announcing it', async () => {
+    director.update(arriveBackward(captioned, { chapter: 0, page: 1 }), 'enter')
+    expect(captions).toEqual([])
+    expect(soundscapes).toEqual([['rain', 'harbour music']])
+
+    director.stop()
+    expect(soundscapes.at(-1)).toEqual([])
   })
 })
 

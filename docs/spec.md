@@ -124,7 +124,7 @@ Base syntax is CommonMark with smart punctuation (`"…"` → “…”, `--` �
 | Music | `::music{harbour volume=0.8 fade=2 delay=1}` · `::music{stop}` · `::music{stop fade=0}` (hard stop) |
 | Ambient layer | `::ambient{rain}` (ID defaults to the name; `id=` to override) · `::ambient{stop rain}` · `::ambient{stop}` (all layers) |
 | Sound effect | `::sfx{thunder volume=0.6 delay=1.5}` |
-| Sound caption (post-MVP) | `caption="a bell tolls, uneven"` on any `::music`, `::ambient` or `::sfx` cue (§6.7) |
+| Sound caption | `caption="a bell tolls, uneven"` on any `::music`, `::ambient` or `::sfx` cue (§6.7) |
 | Footnote (post-MVP) | `text[^ash]` with `[^ash]: The definition.` anywhere in the same chapter file |
 | Reveal steps | `:::reveal{effect=typewriter duration=2 delay=0.3 easing=ease-in}` … `:::`; each block is a step unless `together`; `rest=wave` adds a resting effect |
 | Resting effect | `:fx[so kind]{wave speed=2}` inline, or a `:::fx{pulse}` block; options `speed`, `amplitude`, `scale`, `min-opacity`, `gradient=name` |
@@ -171,6 +171,7 @@ Conversion from DOCX and other formats is out of scope; authors are pointed to *
 - Reference aliases that never appear in the manuscript (warning).
 - Overlapping/ambiguous aliases between references (warning).
 - Missing alt text on any image (warning).
+- Music, ambience and sound-effect cues without a `caption` (warning, like missing alt text; §6.7).
 - `::music{stop}` / `::ambient{stop}` with nothing playing (warning).
 - Unknown directive names, effect names or style names.
 - Pages that exceed the limit because a single block is larger than the limit (warning).
@@ -181,7 +182,6 @@ Post-MVP, it should also catch:
 - References that no page links to, counting `:ref` (warning).
 - Cues that do nothing: music for the track already playing, an ambient layer started while it's already playing or stopped while it isn't, and the same sound effect cued twice on one step (warning).
 - Reveal steps with no visible content, such as a step holding only cues (warning).
-- Music, ambience and sound-effect cues without a `caption` (warning, like missing alt text; §6.7).
 - Footnote markers without a definition, and definitions never referenced.
 - A build over the size budget (§4.5).
 
@@ -320,7 +320,7 @@ All sound (music, ambience, effects and narration) plays from decoded buffers th
 
 Browsers block audio before user interaction. The landing screen's *Start* / *Continue* action serves as the required gesture; no audio is attempted before it.
 
-### 6.7 Sound captions (post-MVP)
+### 6.7 Sound captions
 
 Deaf and hard-of-hearing readers otherwise miss part of the book, so music, ambience and sound-effect cues may carry a `caption` (§4.2), written in the book's voice: *a bell tolls, uneven*. With *Captions* on (Settings → Sound, off by default), the runtime shows them in a small caption strip at the bottom of the page, in an `aria-live="polite"` region:
 
@@ -511,7 +511,7 @@ Authors set the defaults; readers can override **only settings that serve access
 - **Special text** on/off (special typography and animations). Defaults to off when the OS reports `prefers-reduced-motion`.
 - **Background video/GIF animation** follows the special-text/motion setting (falls back to a static poster frame).
 - **Music, ambience, sound effects:** separate volume/mute.
-- **Captions** for sound (post-MVP, §6.7) and **Read aloud** (post-MVP, §6.4).
+- **Captions** for sound (§6.7) and **Read aloud** (post-MVP, §6.4).
 - **Time left** in the status bar on/off (post-MVP, §13.3).
 - **Auto mode** on/off and interval.
 - **Already read** flag.
@@ -596,7 +596,7 @@ Future: multi-language books, per-language references/aliases, RTL page directio
 
 ### 16.2 Later
 
-Sound captions (§6.7) · read aloud with speech synthesis (§6.4) · footnotes (§4.2) · spoiler-safe search (§13.2) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
+Read aloud with speech synthesis (§6.4) · footnotes (§4.2) · spoiler-safe search (§13.2) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
 
 Also: hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
 

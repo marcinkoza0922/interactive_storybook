@@ -154,7 +154,7 @@ export class WebAudioEngine implements AudioEngine {
   }
 
   /** A line's length, from its decoded audio (which is then ready to play). */
-  voiceDuration(src: string): Promise<number> {
+  duration(src: string): Promise<number> {
     return this.load(src).then((buffer) => (buffer ? buffer.duration * 1000 : 0))
   }
 

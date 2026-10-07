@@ -22,8 +22,8 @@ export interface AudioEngine {
   playSfx(src: string, volume: number): void
   /** Play a line of narration; `onEnded` fires when it finishes or fails to play. */
   playVoice(src: string, volume: number, onEnded: () => void): VoiceHandle
-  /** How long a line of narration lasts, in milliseconds (0 if unknown), without playing it. */
-  voiceDuration(src: string): Promise<number>
+  /** How long a sound lasts, in milliseconds (0 if unknown), without playing it. */
+  duration(src: string): Promise<number>
   /** Fetch and decode in advance so cues fire on time. */
   preload(srcs: string[]): void
   setChannelVolume(channel: Channel, volume: number): void

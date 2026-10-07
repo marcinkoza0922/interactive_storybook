@@ -1,8 +1,8 @@
 # The Harbour
 
 ::illustration{plate-harbour alt="A small ferry coming into a grey harbour below a hillside town"}
-::music{harbour volume=0.8}
-::ambient{sea volume=0.7}
+::music{harbour volume=0.8 caption="slow harbour music, an accordion"}
+::ambient{sea volume=0.7 caption="waves against the quay"}
 The ferry came in late, as it always did in the weeks before the storms, and Wren was the last to step off. The harbour smelled of tar and wet rope. Somewhere above the town a bell was ringing, slow and uneven, as though whoever pulled it had forgotten the count.
 
 She had a single bag, a letter folded into her coat, and no idea where she would sleep.
@@ -24,10 +24,10 @@ Inside, the air was cold and still.
 :::
 
 :::reveal
-::sfx{match}
+::sfx{match caption="a match strikes"}
 On the table sat a single candle, freshly lit.
 
-::music{letter fade=3 delay=0.8}
+::music{letter fade=3 delay=0.8 caption="quiet piano"}
 Beside it, in handwriting she knew better than her own, a note:
 :::
 
@@ -38,8 +38,8 @@ Beside it, in handwriting she knew better than her own, a note:
 
 ::pagebreak
 
-::ambient{wind volume=0.6}
-::sfx{bell volume=0.6 delay=1.5}
+::ambient{wind volume=0.6 caption="wind"}
+::sfx{bell volume=0.6 delay=1.5 caption="a bell tolls, uneven"}
 Wren did not sleep that night. She sat with her back to the wall and the candle between her hands, listening to the house settle around her. Every so often :fx[the bell rang again]{pulse}, always the same uneven pattern, and every time she counted the strokes and came up with a different number.
 
 Near dawn she took the letter out and read it again. It was eleven years old. It asked her to come home. It did not say why, and the woman who had written it had been dead for nine of those eleven years.

@@ -5,7 +5,7 @@ header_image_alt = ""
 # The Keeper
 
 ::illustration{none}
-::music{keeper fade=2.5}
+::music{keeper fade=2.5 caption="low strings"}
 The keeper was younger than she expected, with ink on his fingers and a face that gave away nothing at all.
 
 ::voice{the-daughter}
@@ -17,7 +17,7 @@ The keeper was younger than she expected, with ink on his fingers and a face tha
 :::
 
 :::reveal
-::sfx{bell volume=0.8}
+::sfx{bell volume=0.8 caption="the bell, close and loud"}
 For the first time, :fx[something moved]{tremble} behind his eyes.
 :::
 
@@ -29,6 +29,6 @@ He let her climb the stairs ahead of him. There were a hundred and twelve of the
 :::reveal
 ::ambient{stop wind fade=0}
 ::music{stop fade=0}
-::sfx{bell}
+::sfx{bell caption="the bell, once"}
 At the top there was no lamp. There was only :fx[the bell]{gradient}, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, :style[a coat exactly like her own]{whisper}.
 :::
