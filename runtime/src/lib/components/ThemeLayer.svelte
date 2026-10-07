@@ -7,12 +7,14 @@
     screen: 'landing' | 'reading'
     /** False when the reader turned off special text or prefers reduced motion. */
     motion: boolean
+    /** High contrast is on: a plain page color instead of the background. */
+    solid: boolean
     assetUrl: (src: string) => string
   }
 
-  let { theme, screen, motion, assetUrl }: Props = $props()
+  let { theme, screen, motion, solid, assetUrl }: Props = $props()
 
-  const background = $derived(theme.backgrounds[screen] ?? null)
+  const background = $derived(solid ? null : (theme.backgrounds[screen] ?? null))
   const kind = $derived(background ? backgroundKind(background) : null)
   const src = $derived(background?.src)
   const customCss = $derived(theme.custom_css)

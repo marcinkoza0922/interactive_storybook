@@ -42,10 +42,17 @@ export interface ChannelSetting {
 
 export type BodyFont = 'book' | 'serif' | 'sans' | 'hyperlegible'
 
+export type TextWidth = 'narrow' | 'book' | 'wide'
+
 export interface Settings {
   body_font: BodyFont
   /** Multiplies the theme's body text size. */
   font_scale: number
+  /** Multiplies the theme's line height for body text. */
+  line_spacing: number
+  text_width: TextWidth
+  /** Maximum-contrast text and paper in the theme's polarity; no textures or tints. */
+  high_contrast: boolean
   accents: boolean
   /** Special typography plus entrance and resting animations. */
   special_text: boolean
@@ -73,12 +80,16 @@ export interface SaveState {
 }
 
 export const FONT_SCALE_RANGE = { min: 0.8, max: 1.6, step: 0.1 }
+export const LINE_SPACING_RANGE = { min: 0.8, max: 1.6, step: 0.1 }
 
-export function defaultSettings(prefersReducedMotion: boolean): Settings {
+export function defaultSettings(prefersReducedMotion: boolean, prefersMoreContrast = false): Settings {
   const channel = (volume: number): ChannelSetting => ({ volume, muted: false })
   return {
     body_font: 'book',
     font_scale: 1,
+    line_spacing: 1,
+    text_width: 'book',
+    high_contrast: prefersMoreContrast,
     accents: true,
     special_text: !prefersReducedMotion,
     audio: { master: channel(1), music: channel(0.8), ambience: channel(0.8), sfx: channel(1), voice: channel(1) },

@@ -36,6 +36,8 @@
 
   /* Layout */
   --tome-page-max-width: 36rem;
+  /* The page width after the reader's text width setting; themes set page-max-width instead. */
+  --tome-text-width: calc(var(--tome-page-max-width) * var(--tome-text-width-scale, 1));
   --tome-page-padding: clamp(1.5rem, 6vw, 4rem);
   --tome-sidebar-width: 20rem;
 
@@ -46,7 +48,7 @@
 
   /* The book as an object, when a reading background shows behind it */
   --tome-book-margin: clamp(0.5rem, 3vw, 2.5rem);
-  --tome-sheet-width: calc(var(--tome-page-max-width) + 2 * var(--tome-page-padding) + 2 * var(--tome-page-frame-width));
+  --tome-sheet-width: calc(var(--tome-text-width) + 2 * var(--tome-page-padding) + 2 * var(--tome-page-frame-width));
   --tome-sheet-shadow: 0 0.75rem 2.5rem rgb(0 0 0 / 0.35), 0 0.1rem 0.4rem rgb(0 0 0 / 0.2);
   --tome-sheet-radius: 3px;
   --tome-page-frame: none;

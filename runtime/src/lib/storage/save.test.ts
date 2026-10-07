@@ -102,4 +102,13 @@ describe('storage round trip', () => {
     expect(save.settings.audio.music).toEqual(defaults.audio.music)
     expect(save.bookmarks).toEqual([])
   })
+
+  it('turns high contrast on for older saves when the system asks for more contrast', async () => {
+    const storage = new MemoryStorageAdapter()
+    const old = { version: 1, position: null, furthest_chapter_id: null, settings: { font_scale: 1.3 } }
+    await storage.save('tome:test:save', JSON.stringify(old))
+
+    const save = await readSave(storage, bundle, defaultSettings(false, true))
+    expect(save.settings).toMatchObject({ high_contrast: true, line_spacing: 1, text_width: 'book' })
+  })
 })

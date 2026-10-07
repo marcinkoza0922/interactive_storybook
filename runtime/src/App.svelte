@@ -74,7 +74,9 @@
       document.title = bundle.book.title
       document.documentElement.lang = bundle.book.language
       const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches
-      const progress = new Progress(storage, bundle, await readSave(storage, bundle, defaultSettings(reducedMotion)))
+      const moreContrast = matchMedia('(prefers-contrast: more)').matches
+      const defaults = defaultSettings(reducedMotion, moreContrast)
+      const progress = new Progress(storage, bundle, await readSave(storage, bundle, defaults))
       screen = { kind: 'landing', bundle, progress }
       // `tome preview` reloads the page on every rebuild; go straight back to where the author was.
       const position = progress.save.position
@@ -184,6 +186,7 @@
     {theme}
     screen={screen.kind}
     motion={screen.progress.settings.special_text && !reducedMotion.current}
+    solid={screen.progress.settings.high_contrast}
     {assetUrl}
   />
 {/if}

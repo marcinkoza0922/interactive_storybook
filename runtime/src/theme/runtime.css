@@ -357,7 +357,7 @@ body {
 }
 
 .tome-page {
-  max-width: var(--tome-page-max-width);
+  max-width: var(--tome-text-width);
   margin-inline: auto;
   padding: var(--tome-page-padding);
   border: var(--tome-page-frame-width) solid transparent;
@@ -366,7 +366,7 @@ body {
   background-clip: padding-box;
   font-family: var(--tome-reader-font, var(--tome-font-body));
   font-size: calc(var(--tome-font-size-body) * var(--tome-font-scale, 1));
-  line-height: var(--tome-line-height);
+  line-height: calc(var(--tome-line-height) * var(--tome-line-spacing, 1));
 }
 
 .tome-chapter-title {
@@ -611,7 +611,8 @@ body {
 }
 
 :root[data-special-text='off'] [data-tome-rest='gradient'],
-:root[data-accents='off'] [data-tome-rest='gradient'] {
+:root[data-accents='off'] [data-tome-rest='gradient'],
+:root[data-contrast='high'] [data-tome-rest='gradient'] {
   background: none;
   color: inherit;
 }
@@ -705,7 +706,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: var(--tome-page-max-width);
+  max-width: var(--tome-text-width);
   width: 100%;
   margin-inline: auto;
   padding: 0.5rem var(--tome-page-padding) 1rem;
@@ -723,7 +724,7 @@ body {
 .tome-captions {
   flex: none;
   box-sizing: border-box;
-  max-width: var(--tome-page-max-width);
+  max-width: var(--tome-text-width);
   width: 100%;
   min-height: 3.2rem;
   margin-inline: auto;
@@ -866,7 +867,7 @@ body {
 .tome-reference-section {
   font-family: var(--tome-reader-font, inherit);
   font-size: calc(1rem * var(--tome-font-scale, 1));
-  line-height: 1.5;
+  line-height: calc(1.5 * var(--tome-line-spacing, 1));
 }
 
 .tome-reference-section :where(p) {
@@ -1293,4 +1294,64 @@ body {
   text-align: center;
   box-shadow: 0 0.25rem 1rem rgb(0 0 0 / 0.25);
   animation: tome-fade-in 200ms ease-out both;
+}
+
+/*
+ * High contrast: black and white in the paper's polarity, chosen per page so a named paper
+ * picks its own pair. Black and white text contrast equally at OKLCH lightness 0.56.
+ * The paper token can't be redefined from itself, so the rules that paint it are overridden.
+ */
+:root[data-contrast='high'],
+:root[data-contrast='high'] .tome-reading[data-paper] {
+  --tome-hc-paper: oklch(from var(--tome-paper) clamp(0, (l - 0.56) * 1000, 1) 0 0);
+  --tome-hc-ink: oklch(from var(--tome-paper) clamp(0, (0.56 - l) * 1000, 1) 0 0);
+  --tome-text: var(--tome-hc-ink);
+  --tome-text-muted: var(--tome-hc-ink);
+  --tome-accent: var(--tome-hc-ink);
+  --tome-accent-contrast: var(--tome-hc-paper);
+  --tome-rule: var(--tome-hc-ink);
+  --tome-sidebar-bg: var(--tome-hc-paper);
+  --tome-illustration-bg: var(--tome-hc-paper);
+  --tome-menu-bg: var(--tome-hc-paper);
+  --tome-caption-bg: var(--tome-hc-paper);
+  --tome-caption-text: var(--tome-hc-ink);
+  /* Marked text is shown inverted. */
+  --tome-highlight-bg: var(--tome-hc-ink);
+  --tome-search-match-bg: var(--tome-hc-ink);
+  --tome-narration-word-bg: var(--tome-hc-ink);
+  --tome-narration-paragraph-bg: transparent;
+  --tome-page-surface: transparent;
+  --tome-page-texture: none;
+  --tome-paper-grain: none;
+}
+
+:root[data-contrast='high'] body,
+:root[data-contrast='high'] .tome-text-column,
+:root[data-contrast='high'] .tome-input {
+  background: var(--tome-hc-paper);
+}
+
+:root[data-contrast='high'] ::highlight(tome-highlight),
+:root[data-contrast='high'] ::highlight(tome-search),
+:root[data-contrast='high'] ::highlight(tome-narration),
+:root[data-contrast='high'] .tome-search-snippet mark {
+  color: var(--tome-hc-paper);
+}
+
+/* The paragraph being narrated gets a ring instead of a tint. */
+:root[data-contrast='high'] .tome-block[data-narrating='paragraph'] {
+  box-shadow:
+    0 0 0 0.3em var(--tome-hc-paper),
+    0 0 0 calc(0.3em + 2px) var(--tome-hc-ink);
+}
+
+/* Special text keeps its typography but not its colors. */
+:root[data-contrast='high'] [data-tome-style] {
+  color: inherit;
+  background: none;
+  text-shadow: none;
+}
+
+:root[data-contrast='high'] :focus-visible {
+  outline-width: 3px;
 }

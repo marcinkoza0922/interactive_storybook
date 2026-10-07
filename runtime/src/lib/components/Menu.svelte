@@ -4,17 +4,11 @@
   import { desktop } from '../desktop.svelte'
   import type { Position } from '../reader/navigation'
   import type { SearchMatch } from '../search/search'
-  import { AUDIO_CHANNELS, BODY_FONTS } from '../settings/apply'
+  import { AUDIO_CHANNELS } from '../settings/apply'
   import type { Progress } from '../state/progress.svelte'
   import SearchView from './SearchView.svelte'
-  import {
-    FONT_SCALE_RANGE,
-    chapterLocked,
-    isHighlightCurrent,
-    resolvePosition,
-    type BodyFont,
-    type PageRef,
-  } from '../storage/save'
+  import TextSettings from './TextSettings.svelte'
+  import { chapterLocked, isHighlightCurrent, resolvePosition, type PageRef } from '../storage/save'
 
   type List = 'chapters' | 'bookmarks' | 'highlights' | 'search'
 
@@ -325,31 +319,7 @@
           </fieldset>
         {/if}
 
-        <fieldset class="tome-fieldset">
-          <legend>Text</legend>
-          {#each Object.entries(BODY_FONTS) as [font, { label, stack }] (font)}
-            <label class="tome-option" style:font-family={stack ?? 'var(--tome-font-body)'}>
-              <input
-                type="radio"
-                name="body-font"
-                checked={settings.body_font === font}
-                onchange={() => progress.updateSettings({ body_font: font as BodyFont })}
-              />
-              {label}
-            </label>
-          {/each}
-          <label class="tome-range">
-            <span>Text size <output>{Math.round(settings.font_scale * 100)}%</output></span>
-            <input
-              type="range"
-              min={FONT_SCALE_RANGE.min}
-              max={FONT_SCALE_RANGE.max}
-              step={FONT_SCALE_RANGE.step}
-              value={settings.font_scale}
-              oninput={(e) => progress.updateSettings({ font_scale: Number(e.currentTarget.value) })}
-            />
-          </label>
-        </fieldset>
+        <TextSettings {progress} />
 
         <fieldset class="tome-fieldset">
           <legend>Effects</legend>
@@ -368,6 +338,14 @@
               onchange={(e) => progress.updateSettings({ accents: e.currentTarget.checked })}
             />
             Color accents
+          </label>
+          <label class="tome-option">
+            <input
+              type="checkbox"
+              checked={settings.high_contrast}
+              onchange={(e) => progress.updateSettings({ high_contrast: e.currentTarget.checked })}
+            />
+            High contrast
           </label>
         </fieldset>
 

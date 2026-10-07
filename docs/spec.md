@@ -504,9 +504,9 @@ A highlight (from the Highlights list, or right after making one) can be saved a
 
 Authors set the defaults; readers can override **only settings that serve accessibility or comfort**. There is no reader-selectable dark mode or alternative palette: this is not a generic ereader, and the author's theme is part of the work.
 
-- **Body font** (from bundled choices including the author's default) and **font size**. Post-MVP, the bundled choices include a typeface designed for legibility (such as Atkinson Hyperlegible or OpenDyslexic, both under the SIL Open Font License).
-- **Line spacing** and **text width** (post-MVP): spacing from tight to loose around the theme's value, and width as narrow, theme default or wide. Both apply to body text only; pagination doesn't change, and longer pages scroll as usual (§4.3).
-- **High contrast** (post-MVP): replaces the text and paper colors with a maximum-contrast pair that keeps the theme's polarity (dark on light for a light paper, light on dark for a dark one), drops paper textures and grain, turns accents and backgrounds into solid colors, and thickens focus outlines. It defaults to on when the OS reports `prefers-contrast: more`. This is an accessibility override, not an alternative palette, so it doesn't conflict with the rule above. The runtime sets `data-contrast="high"` on the root element for themes and custom CSS.
+- **Body font** (from bundled choices including the author's default, a serif, a sans-serif and Atkinson Hyperlegible, a typeface designed for legibility under the SIL Open Font License) and **font size**.
+- **Line spacing** and **text width**: spacing from 80% to 160% of the theme's line height, and width as narrow (80% of the theme's page width), theme default or wide (125%). Both apply to body text only; pagination doesn't change, and longer pages scroll as usual (§4.3). The status bar and caption strip follow the text width.
+- **High contrast**: replaces the text and paper colors with a maximum-contrast pair that keeps the theme's polarity (dark on light for a light paper, light on dark for a dark one), drops paper textures and grain, turns accents and backgrounds into solid colors, hides theme backgrounds, shows highlights and search matches inverted, and thickens focus outlines. Polarity is decided per page, so a named paper picks its own pair. It defaults to on when the OS reports `prefers-contrast: more`. This is an accessibility override, not an alternative palette, so it doesn't conflict with the rule above. The runtime sets `data-contrast="high"` on the root element for themes and custom CSS.
 - **Color accents** on/off.
 - **Special text** on/off (special typography and animations). Defaults to off when the OS reports `prefers-reduced-motion`.
 - **Background video/GIF animation** follows the special-text/motion setting (falls back to a static poster frame).
@@ -596,7 +596,7 @@ Future: multi-language books, per-language references/aliases, RTL page directio
 
 ### 16.2 Later
 
-Read aloud with speech synthesis (§6.4) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
+Read aloud with speech synthesis (§6.4) · time left in chapter (§13.3) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
 
 Also: hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
 
