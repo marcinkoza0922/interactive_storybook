@@ -87,6 +87,10 @@ The CLI emits a versioned bundle consumed by the runtime:
 - All asset paths in the bundle, including URLs inside block and reference HTML, are relative to `book.json`.
 - A `bundle_schema_version` field; the runtime refuses bundles with an incompatible major version, with a clear message.
 
+### 3.3 Visual regression tests (post-MVP)
+
+Pagination, kinetic text and theming are hard to cover with unit tests, so the sample book doubles as a visual test suite. A headless Chromium (Playwright) opens a build of the sample at fixed viewports (a wide spread and a narrow single page), with animations settled to their final frame and audio off. It screenshots a fixed list of pages, the menu, the references sidebar and the title screen, and compares them against stored images within a small tolerance. It runs as its own `make` target, not as part of `make test`, and reviewed differences are accepted by regenerating the stored images.
+
 ---
 
 ## 4. Authoring
@@ -120,6 +124,8 @@ Base syntax is CommonMark with smart punctuation (`"…"` → “…”, `--` �
 | Music | `::music{harbour volume=0.8 fade=2 delay=1}` · `::music{stop}` · `::music{stop fade=0}` (hard stop) |
 | Ambient layer | `::ambient{rain}` (ID defaults to the name; `id=` to override) · `::ambient{stop rain}` · `::ambient{stop}` (all layers) |
 | Sound effect | `::sfx{thunder volume=0.6 delay=1.5}` |
+| Sound caption (post-MVP) | `caption="a bell tolls, uneven"` on any `::music`, `::ambient` or `::sfx` cue (§6.7) |
+| Footnote (post-MVP) | `text[^ash]` with `[^ash]: The definition.` anywhere in the same chapter file |
 | Reveal steps | `:::reveal{effect=typewriter duration=2 delay=0.3 easing=ease-in}` … `:::`; each block is a step unless `together`; `rest=wave` adds a resting effect |
 | Resting effect | `:fx[so kind]{wave speed=2}` inline, or a `:::fx{pulse}` block; options `speed`, `amplitude`, `scale`, `min-opacity`, `gradient=name` |
 | Special style | `:style[a coat like her own]{whisper}` or `:::style{handwriting}` |
@@ -131,6 +137,8 @@ Base syntax is CommonMark with smart punctuation (`"…"` → “…”, `--` �
 A cue fires with the first block after it; cues after a chapter's last block attach to an empty anchor block at the same step as the last block. `::ambient{stop}` is expanded by the compiler into a stop for every layer playing at that point, following the audio state across chapters.
 
 **Asset references.** A bare name like `harbour` is looked up in `assets/` (first in the folder for its kind: `audio/`, `images/` (and `video/`, for posters), `video/`, `fonts/`), and the extension may be omitted when exactly one file of the right kind matches. A path starting with `./` or `../` is relative to the file it's written in, so Markdown editors can preview images. Assets are copied into the bundle with content-hashed names.
+
+**Footnotes (post-MVP).** Standard Markdown footnotes (`[^label]` and `[^label]: …`, as pulldown-cmark parses them). A footnote's definition never appears in the page flow and doesn't count against pagination limits. The marker renders as a small superscript button; activating it (click, tap, or focus and the advance key) opens the footnote in a popover anchored to the marker, which closes with Esc, a click outside, or a page turn. Activating a marker never advances the page. Footnotes are numbered per chapter. The bundle carries each page's footnotes as rendered HTML beside its blocks, so references inside footnote text are matched like any other text.
 
 **Chapter front matter** (TOML between `+++` lines) may set `id`, `title`, `header_image`, `header_image_alt` and `pagination`. Without a `title`, a leading `# Heading` is the title.
 
@@ -166,6 +174,43 @@ Conversion from DOCX and other formats is out of scope; authors are pointed to *
 - `::music{stop}` / `::ambient{stop}` with nothing playing (warning).
 - Unknown directive names, effect names or style names.
 - Pages that exceed the limit because a single block is larger than the limit (warning).
+
+Post-MVP, it should also catch:
+
+- Files in `assets/` that nothing uses (warning), so they don't bloat the build.
+- References that no page links to, counting `:ref` (warning).
+- Cues that do nothing: music for the track already playing, an ambient layer started while it's already playing or stopped while it isn't, and the same sound effect cued twice on one step (warning).
+- Reveal steps with no visible content, such as a step holding only cues (warning).
+- Music, ambience and sound-effect cues without a `caption` (warning, like missing alt text; §6.7).
+- Footnote markers without a definition, and definitions never referenced.
+- A build over the size budget (§4.5).
+
+### 4.5 Asset processing (post-MVP)
+
+`tome build` prepares assets so every book gets consistent sound and small downloads without the author doing anything:
+
+- **Loudness.** Each music, ambience and narration file is measured (EBU R128 integrated loudness) and the bundle records a gain that brings it to the channel's target (`[audio] loudness` in `book.toml`, with defaults per channel; sound effects are left as recorded). The runtime applies the gain before the cue's `volume` and the reader's volumes. Files aren't re-encoded, so this is lossless. `normalize = false` on a cue's asset entry, or in `[audio]`, opts out.
+- **Images.** Raster images larger than they will ever be shown are downscaled (to a `max_image_size` in `book.toml`), and re-encoded to a smaller modern format at a quality the author can set. Several widths are emitted for large illustrations so the runtime picks one for the viewport (`srcset`). SVG and GIF are copied as they are, and video is untouched (no ffmpeg dependency).
+- **Caching.** Processed results are cached by the source's content hash, so `tome preview` stays fast. Preview may serve originals until processing finishes.
+- **Size report.** Every build prints the bundle's total size, its largest assets, and how much each chapter adds (assets first used in that chapter), so authors can see what a web reader downloads. A `[build] size_budget_mb` in `book.toml` turns an oversized build into a warning.
+
+### 4.6 Preview tools (post-MVP)
+
+`tome preview` adds author-only tools, absent from every built output:
+
+- **Debug overlay**, toggled with F2: the music track and ambient layers playing, delayed cues still pending, the narration queue, the reveal step (`3 / 7`), why the page broke where it did (`limit: 212 / 220 words`, `::pagebreak`, `chapter start`), the theme overrides and paper in effect, and the chapter's ID.
+- **Open in editor.** Clicking a block with a modifier (Ctrl/Cmd+click), or a button in the overlay, opens its source file at the right line. Preview builds carry a source map (block → file and line) that shipped bundles don't. The preview server runs the editor with `$VISUAL` or `$EDITOR`, or a command template from the author's `tome` config (`code -g {file}:{line}`); it only accepts the request from the page it served.
+- **Follow edits.** An overlay toggle that, after a rebuild caused by a manuscript edit in another chapter, jumps to the first page that changed instead of staying on the current one.
+
+### 4.7 Editor support (post-MVP)
+
+`tome lsp` runs a language server over stdio for the manuscript, `book.toml`, `references.toml`, `contents.toml` and `theme.toml`:
+
+- Diagnostics from `tome check` as the author types.
+- Completion of directive names and options, effect and style names, asset names (per kind, as §4.2 resolves them), reference IDs in `:ref`, and chapter IDs in `from =` and `contents.toml`.
+- Hover showing a reference's sections and their gating, an asset's details (size, duration, dimensions), or a style's definition; go-to-definition from `:ref` and `from =` to what they name.
+
+A thin VS Code extension (published separately) starts the server and adds syntax highlighting for directives. It finds `tome` on the `PATH` or at a configured path, and tells the author how to install it if it's missing, since non-programmers are the authors who benefit most.
 
 ---
 
@@ -265,6 +310,8 @@ Voice cues (`::voice{name}`, options `volume` and `delay`) are lines of narratio
 - **Auto mode follows the narration**, heard or not: it waits for each line before advancing. With narration off, lines pass silently, each lasting as long as its recording (read from the file's metadata), since a line's length is a good guide to how long its text takes to read.
 - A line that fails to load counts as finished, so the queue and the guard never get stuck.
 
+**Read aloud (post-MVP).** For readers who want the book spoken but have no recorded narration, a *Read aloud* setting (off by default) speaks the text with the system's speech synthesis (Web Speech API). It reads each block as it's revealed, and follows the narration rules above: one block at a time in order, cut off by a page turn, forward only, with the turn guard, ducking, auto-mode waiting and word highlighting (from the synthesizer's word boundary events). Recorded narration always wins: a page with voice cues plays those, and Read aloud covers only pages without them. Hidden text such as the plain copies of per-character effects is read once, and footnotes aren't read. The reader picks a voice and rate from what the system offers; with no voices available, the setting explains that and stays off.
+
 ### 6.5 Playback
 
 All sound (music, ambience, effects and narration) plays from decoded buffers through one Web Audio graph, never from `<audio>` elements. Browsers that block autoplay (Brave does by default) refuse an element's `play()` unless a click comes right before it, which a queued narration line, a page's music or a preview reload never has; a resumed audio context plays freely. Buffers also loop music and ambience without gaps, and give narration highlighting an exact clock. Decoded music is large (a few minutes of stereo is tens of megabytes), so decoded audio is cached within a 256 MB budget, least recently used first, never evicting a track that's playing; the current and next pages' sounds are decoded ahead.
@@ -272,6 +319,18 @@ All sound (music, ambience, effects and narration) plays from decoded buffers th
 ### 6.6 Web autoplay
 
 Browsers block audio before user interaction. The landing screen's *Start* / *Continue* action serves as the required gesture; no audio is attempted before it.
+
+### 6.7 Sound captions (post-MVP)
+
+Deaf and hard-of-hearing readers otherwise miss part of the book, so music, ambience and sound-effect cues may carry a `caption` (§4.2), written in the book's voice: *a bell tolls, uneven*. With *Captions* on (Settings → Sound, off by default), the runtime shows them in a small caption strip at the bottom of the page, in an `aria-live="polite"` region:
+
+- A **sound effect** caption appears when the effect plays and stays for the effect's length, at least 3 seconds.
+- A **music** or **ambience** caption appears when the track or layer starts and fades after a few seconds. The strip keeps a compact, dim line of what is still sounding (*rain · harbour music*), so a reader arriving on a page knows the soundscape; it's restored with the audio state when going back or resuming.
+- Captions follow the direction rules: sound effects aren't captioned going back, because they don't play.
+- Captions show whether or not the channel is muted, since a reader who can't hear it may well have muted it.
+- Narration isn't captioned: its text is already the page, and narration highlighting shows where it is.
+
+Theme tokens style the strip (`caption-bg`, `caption-text`), and the strip never covers the text column on a spread.
 
 ---
 
@@ -419,6 +478,7 @@ One state per install (no profiles):
 - Settings (§12).
 - Bookmarks (page-level, optional label).
 - Highlights (text ranges anchored by chapter ID, block ID, offsets and a text snippet), each with an optional note.
+- Reading pace for the time-left estimate (post-MVP, §13.3).
 
 Saved automatically. Electron: a JSON file in the app data directory. Web: IndexedDB/localStorage scoped to the book. The web build *should* offer export/import of the save file, since browser storage can be wiped.
 
@@ -434,17 +494,25 @@ All persistence goes through a storage-adapter interface so that a remote/sync b
 - Highlights are painted with the CSS Custom Highlight API, so the page DOM is never modified; per-character effects have already restructured it.
 - Post-MVP: robust re-anchoring of bookmarks/highlights, with orphans surfaced to the reader.
 
+### 11.4 Quote cards (post-MVP)
+
+A highlight (from the Highlights list, or right after making one) can be saved as a **quote card**: an image of the quote with the book's title, author and chapter title, drawn in the book's fonts, colors and paper at the reader's current theme. The runtime renders it to a canvas and saves a PNG (a download on the web; a save dialog on desktop, which adds a save-file call to the preload bridge). The highlight's note isn't included. It's how readers share the book, and authors control it in `book.toml`: `[sharing] quote_cards = false` turns it off, and `max_quote_length` (default 280 characters) caps how much text one card can carry, so cards can't be used to copy out whole pages. The theme may set a card background and layout (`quote_card` in `theme.toml`); by default, cards use the reading paper and the chapter ornament.
+
 ---
 
 ## 12. Reader settings & accessibility
 
 Authors set the defaults; readers can override **only settings that serve accessibility or comfort**. There is no reader-selectable dark mode or alternative palette: this is not a generic ereader, and the author's theme is part of the work.
 
-- **Body font** (from bundled choices including the author's default) and **font size**.
+- **Body font** (from bundled choices including the author's default) and **font size**. Post-MVP, the bundled choices include a typeface designed for legibility (such as Atkinson Hyperlegible or OpenDyslexic, both under the SIL Open Font License).
+- **Line spacing** and **text width** (post-MVP): spacing from tight to loose around the theme's value, and width as narrow, theme default or wide. Both apply to body text only; pagination doesn't change, and longer pages scroll as usual (§4.3).
+- **High contrast** (post-MVP): replaces the text and paper colors with a maximum-contrast pair that keeps the theme's polarity (dark on light for a light paper, light on dark for a dark one), drops paper textures and grain, turns accents and backgrounds into solid colors, and thickens focus outlines. It defaults to on when the OS reports `prefers-contrast: more`. This is an accessibility override, not an alternative palette, so it doesn't conflict with the rule above. The runtime sets `data-contrast="high"` on the root element for themes and custom CSS.
 - **Color accents** on/off.
 - **Special text** on/off (special typography and animations). Defaults to off when the OS reports `prefers-reduced-motion`.
 - **Background video/GIF animation** follows the special-text/motion setting (falls back to a static poster frame).
 - **Music, ambience, sound effects:** separate volume/mute.
+- **Captions** for sound (post-MVP, §6.7) and **Read aloud** (post-MVP, §6.4).
+- **Time left** in the status bar on/off (post-MVP, §13.3).
 - **Auto mode** on/off and interval.
 - **Already read** flag.
 - **Reset reading progress** (with a confirmation): forgets the position, the furthest chapter (relocking references) and the already-read flag, and returns to the title screen. Bookmarks and highlights are deleted only if the reader ticks *Also delete bookmarks and highlights*; other settings stay. Jumping to a kept bookmark or highlight past the next unread chapter shows the same spoiler warning as the chapter list.
@@ -463,6 +531,7 @@ Text is semantic HTML; all controls are keyboard- and screen-reader-accessible.
 | Bookmark page | B | Menu → Bookmarks | Menu → Bookmarks | — |
 | Highlight selection | H | Highlight button | Highlight button | — |
 | Toggle reference sidebar | R | References button (status bar) | References button (status bar) | Y |
+| Search (post-MVP) | / or Ctrl+F | Menu → Search | Menu → Search | — |
 | Toggle text/illustration (narrow) | I | Toggle button | Toggle button | X |
 | Turn page | → / ← | — | — | RB / LB |
 | Scroll a long page | ↑ / ↓ | Wheel | Drag | D-pad / left stick up and down |
@@ -473,11 +542,19 @@ For RTL books, swipe and arrow directions mirror (future, §14).
 
 **Navigation semantics:** arriving via *advance* is "forward"; via *back* is "backward". A jump (chapter list, bookmark) to a page the reader has **not** seen behaves as forward; to a page they **have** seen behaves as backward (§6.3).
 
-**Menu:** Resume · Chapters · Bookmarks · Highlights · References · Settings · Title screen. A modal dialog opened with Esc or the Menu button in the status bar; Esc closes it. Leaving the book goes through Title screen, since Esc now opens the menu.
+**Menu:** Resume · Chapters · Bookmarks · Highlights · References · Search (post-MVP) · Settings · Title screen. A modal dialog opened with Esc or the Menu button in the status bar; Esc closes it. Leaving the book goes through Title screen, since Esc now opens the menu.
 
 ### 13.1 Chapter index
 
 The chapter list works like the contents page of a paperback: all chapter titles are shown, read or not. The bundle carries it as `contents` (chapter entries with optional title overrides, plus headings); without it the runtime lists every chapter in order. It is **generated automatically** from the manuscript into `contents.toml`, which the author may then edit by hand (rename entries, hide entries, add part/section headings). Once the file exists, the CLI never overwrites it; `tome check` warns when it is out of sync with the manuscript (missing or unknown chapter IDs), and a `tome contents --regenerate` command (name provisional) rebuilds it on request.
+
+### 13.2 Search (post-MVP)
+
+Readers can search the text they've read, to find a half-remembered line. Search covers only chapters up to the **furthest chapter reached** (everything with the already-read flag), so it gates by the same rule as references (§5.1) and can never reveal later text. It is case- and accent-insensitive and matches whole words or phrases. Results are grouped by chapter, each with a short snippet around the match. Choosing one jumps to that page, with the jump rules from §13 (the page has been seen, so it behaves as backward), and briefly marks the match with a CSS Custom Highlight. Footnotes are searched too, and reference entries are not, since they have their own list. The runtime builds the index from the bundle's text when the book loads, or the first time Search opens on a long book, so the bundle doesn't grow. Opened from the menu, or with `/` or Ctrl+F.
+
+### 13.3 Time left (post-MVP)
+
+The status bar can show how long the rest of the chapter will take: *About 9 minutes left in this chapter*. The bundle carries each page's word count. The estimate divides the remaining words by the reader's own pace, measured from time spent on fully revealed pages (ignoring very short and very long ones, such as a skipped page or a reader who walked away), and starts from 230 words per minute until there's enough data. Pace is stored with the reader's saved state. The display rounds to whole minutes, and says *Less than a minute* at the end. It's on by default and can be turned off in Settings → Reading.
 
 ---
 
@@ -519,10 +596,15 @@ Future: multi-language books, per-language references/aliases, RTL page directio
 
 ### 16.2 Later
 
-Voice tracks · hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
+Sound captions (§6.7) · read aloud with speech synthesis (§6.4) · footnotes (§4.2) · spoiler-safe search (§13.2) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
+
+Also: hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
 
 ---
 
 ## 17. Open questions
 
 1. **Final name** for the framework/CLI — deferred.
+2. **Image encoder** for asset processing (§4.5): AVIF (smallest; pure-Rust encoders are slow) or WebP (fast; good lossy encoding needs libwebp, a C dependency). Either way, every output's Chromium supports it.
+3. **Speech synthesis on Linux** (§6.4): Electron on Linux often has no voices unless speech-dispatcher is installed. Should Read aloud be hidden there when no voices are found, or should the desktop build bundle an offline voice?
+4. **Captions default** (§6.7): off by default, or on for books whose cues all carry captions?
