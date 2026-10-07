@@ -15,6 +15,8 @@
   --tome-sidebar-bg: #efe8da;
   --tome-illustration-bg: #e9e2d4;
   --tome-highlight-bg: rgb(222 186 92 / 0.45);
+  /* A search match, marked briefly after going to it */
+  --tome-search-match-bg: color-mix(in srgb, var(--tome-accent) 30%, transparent);
   /* Narration highlighting: the word being spoken, or the whole paragraph without timings */
   --tome-narration-word-bg: color-mix(in srgb, var(--tome-accent) 24%, transparent);
   --tome-narration-paragraph-bg: color-mix(in srgb, var(--tome-accent) 9%, transparent);

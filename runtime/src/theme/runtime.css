@@ -851,6 +851,10 @@ body {
   background-color: var(--tome-highlight-bg);
 }
 
+::highlight(tome-search) {
+  background-color: var(--tome-search-match-bg);
+}
+
 /* Narration: the word being spoken, or the paragraph being read when there are no word timings. */
 ::highlight(tome-narration) {
   background-color: var(--tome-narration-word-bg);
@@ -1091,6 +1095,30 @@ body {
 
 .tome-menu-record-actions .tome-link-button {
   padding-inline: 0;
+}
+
+/* Search */
+
+.tome-search-chapter {
+  margin-block: 1.25rem 0.25rem;
+  font-size: 1rem;
+}
+
+.tome-menu-item.tome-search-result {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.2rem;
+  text-align: start;
+}
+
+.tome-search-snippet {
+  font-family: var(--tome-reader-font, var(--tome-font-body));
+}
+
+.tome-search-snippet mark {
+  background-color: var(--tome-search-match-bg);
+  color: inherit;
 }
 
 .tome-input {

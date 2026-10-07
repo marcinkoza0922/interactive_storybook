@@ -7,8 +7,17 @@
   import type { NarrationProgress } from '../audio/director'
   import { anchorSelection, highlightRanges, rangeIn, visibleTextRoot, type HighlightAnchor } from '../highlights/anchor'
   import { visibleMarker } from '../reader/footnotes'
-  import { advance, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
+  import {
+    advance,
+    arriveBackward,
+    back,
+    pageAt,
+    stepCount,
+    type Position,
+    type ReaderState,
+  } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
+  import type { SearchMatch } from '../search/search'
   import type { Progress } from '../state/progress.svelte'
   import { arriveByJump, isHighlightCurrent } from '../storage/save'
   import CaptionStrip from './CaptionStrip.svelte'
@@ -58,6 +67,10 @@
   let panelOpen = $state(false)
   let selectedReference = $state<string | null>(null)
   let menuOpen = $state(false)
+  /** Open the menu straight to search, which Back then closes. */
+  let menuStart = $state<'search' | undefined>()
+  /** The last search, still there when Search opens again. */
+  let searchQuery = $state('')
   /** Shown after a first attempt to turn the page during narration. */
   let turnNotice = $state(false)
   let turnNoticeTimer: ReturnType<typeof setTimeout> | undefined
@@ -140,6 +153,7 @@
 
     if (turned) {
       closeFootnote(false)
+      clearSearchMark()
       arrive(next)
       pendingHighlight = null
       progress.setPosition(next.position)
@@ -243,6 +257,54 @@
     menuOpen = false
     if (position.chapter === reader.position.chapter && position.page === reader.position.page) return
     go(arriveByJump(bundle, progress.save, position))
+  }
+
+  function openMenu(start?: 'search') {
+    menuStart = start
+    menuOpen = true
+  }
+
+  /** A match found by search is marked briefly after going to it. */
+  let searchMarkTimer: ReturnType<typeof setTimeout> | undefined
+  const SEARCH_MARK_MS = 2500
+
+  function clearSearchMark() {
+    clearTimeout(searchMarkTimer)
+    if ('highlights' in CSS) CSS.highlights.delete('tome-search')
+  }
+  onDestroy(clearSearchMark)
+
+  /**
+   * Go to a search match. It's in a chapter already reached (or a book already read), so the
+   * page shows fully revealed. A match in a footnote opens it.
+   */
+  async function find(match: SearchMatch) {
+    menuOpen = false
+    const position = { chapter: match.chapter, page: match.page }
+    const samePage = position.chapter === reader.position.chapter && position.page === reader.position.page
+    if (!samePage || reader.revealed < stepCount(page)) go(arriveBackward(bundle, position))
+    await tick()
+
+    let root: Element | null = null
+    if (match.target.kind === 'footnote') {
+      const number = String(match.target.number)
+      const marker = scroller.querySelector<HTMLElement>(`[data-tome-footnote="${CSS.escape(number)}"]`)
+      if (!marker) return
+      visibleMarker(marker).scrollIntoView({ block: 'center' })
+      if (footnote?.footnote.number !== match.target.number) toggleFootnote(marker)
+      await tick()
+      root = document.querySelector('.tome-footnote-body')
+    } else {
+      const block = scroller.querySelector(`[data-block-id="${CSS.escape(match.target.blockId)}"]`)
+      block?.scrollIntoView({ block: 'center' })
+      root = block && visibleTextRoot(block)
+    }
+
+    const range = root && rangeIn(root, match.start, match.end)
+    if (!range || !('highlights' in CSS)) return
+    clearSearchMark()
+    CSS.highlights.set('tome-search', new Highlight(range))
+    searchMarkTimer = setTimeout(clearSearchMark, SEARCH_MARK_MS)
   }
 
   function toggleBookmark() {
@@ -377,6 +439,12 @@
   function onkeydown(event: KeyboardEvent) {
     // The menu is a modal dialog: it handles its own keys, including Esc to close.
     if (menuOpen) return
+    const findKey = event.key === '/' || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'f')
+    if (findKey && !event.altKey && !(event.target as Element | null)?.closest('input, textarea, select')) {
+      event.preventDefault()
+      openMenu('search')
+      return
+    }
     if (event.altKey || event.ctrlKey || event.metaKey || event.defaultPrevented) return
     // Let focused controls handle their own activation keys.
     const onControl = (event.target as Element | null)?.closest('button, a, input, textarea, select')
@@ -413,7 +481,7 @@
       case 'Escape':
         if (footnote) closeFootnote(true)
         else if (panelOpen) setPanelOpen(false)
-        else menuOpen = true
+        else openMenu()
         break
       default:
         return
@@ -514,7 +582,7 @@
           >
             References{references.length > 0 ? ` · ${references.length}` : ''}
           </button>
-          <button class="tome-link-button" onclick={() => (menuOpen = true)} aria-haspopup="dialog">Menu</button>
+          <button class="tome-link-button" onclick={() => openMenu()} aria-haspopup="dialog">Menu</button>
         </span>
         <span>{reader.position.page + 1} / {chapter.pages.length}</span>
       </footer>
@@ -550,8 +618,11 @@
       {bundle}
       {progress}
       position={reader.position}
+      start={menuStart}
       onclose={() => (menuOpen = false)}
       onjump={jump}
+      onfind={find}
+      bind:searchQuery
       onreferences={() => {
         menuOpen = false
         setPanelOpen(true)

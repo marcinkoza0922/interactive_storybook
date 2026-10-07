@@ -3,8 +3,10 @@
   import type { Bundle } from '../bundle/types'
   import { desktop } from '../desktop.svelte'
   import type { Position } from '../reader/navigation'
+  import type { SearchMatch } from '../search/search'
   import { AUDIO_CHANNELS, BODY_FONTS } from '../settings/apply'
   import type { Progress } from '../state/progress.svelte'
+  import SearchView from './SearchView.svelte'
   import {
     FONT_SCALE_RANGE,
     chapterLocked,
@@ -14,7 +16,7 @@
     type PageRef,
   } from '../storage/save'
 
-  type List = 'chapters' | 'bookmarks' | 'highlights'
+  type List = 'chapters' | 'bookmarks' | 'highlights' | 'search'
 
   interface Props {
     bundle: Bundle
@@ -26,6 +28,10 @@
     onclose: () => void
     /** Go to a page; `seen` pages are shown fully revealed. */
     onjump: (position: Position) => void
+    /** Go to a search match; without it, the menu offers no search. */
+    onfind?: (match: SearchMatch) => void
+    /** The search text, kept while the menu is closed. */
+    searchQuery?: string
     /** These three are reached only through the main view. */
     onreferences?: () => void
     ontitle?: () => void
@@ -33,7 +39,19 @@
     onreset?: () => void
   }
 
-  let { bundle, progress, position, start, onclose, onjump, onreferences, ontitle, onreset }: Props = $props()
+  let {
+    bundle,
+    progress,
+    position,
+    start,
+    onclose,
+    onjump,
+    onfind,
+    searchQuery = $bindable(''),
+    onreferences,
+    ontitle,
+    onreset,
+  }: Props = $props()
 
   type View = 'main' | List | 'settings' | 'reset' | { confirmJump: Position; from: List }
   let deleteAnnotations = $state(false)
@@ -49,12 +67,16 @@
 
   $effect(() => {
     dialog.showModal()
+    dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus()
   })
 
   async function show(next: View) {
     view = next
     await tick()
-    dialog.querySelector<HTMLElement>('.tome-menu-view button, .tome-menu-view input')?.focus()
+    const target =
+      dialog.querySelector<HTMLElement>('[data-autofocus]') ??
+      dialog.querySelector<HTMLElement>('.tome-menu-view button, .tome-menu-view input')
+    target?.focus()
   }
 
   function chapterTitle(id: string, override?: string): string {
@@ -112,6 +134,16 @@
           Highlights <span class="tome-menu-count">{highlights.length || ''}</span>
         </button>
         <button class="tome-menu-item" onclick={onreferences}>References</button>
+        {#if onfind}
+          <button class="tome-menu-item" onclick={() => show('search')}>
+            <span class="tome-menu-label">
+              <svg class="tome-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M17 10.5a6.5 6.5 0 1 1-13 0 6.5 6.5 0 1 1 13 0z M15.2 15.2L20.5 20.5" />
+              </svg>
+              Search
+            </span>
+          </button>
+        {/if}
         <button class="tome-menu-item" onclick={() => show('settings')}>
           <span class="tome-menu-label">
             <svg class="tome-menu-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -255,6 +287,8 @@
             {/each}
           </ul>
         {/if}
+      {:else if view === 'search' && onfind}
+        <SearchView {bundle} lastChapter={progress.unlockedChapter} bind:query={searchQuery} {onfind} />
       {:else if view === 'settings'}
         <h2 class="tome-menu-heading">Settings</h2>
 

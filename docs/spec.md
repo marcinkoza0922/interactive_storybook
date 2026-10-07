@@ -531,7 +531,7 @@ Text is semantic HTML; all controls are keyboard- and screen-reader-accessible.
 | Bookmark page | B | Menu → Bookmarks | Menu → Bookmarks | — |
 | Highlight selection | H | Highlight button | Highlight button | — |
 | Toggle reference sidebar | R | References button (status bar) | References button (status bar) | Y |
-| Search (post-MVP) | / or Ctrl+F | Menu → Search | Menu → Search | — |
+| Search | / or Ctrl+F | Menu → Search | Menu → Search | — |
 | Toggle text/illustration (narrow) | I | Toggle button | Toggle button | X |
 | Turn page | → / ← | — | — | RB / LB |
 | Scroll a long page | ↑ / ↓ | Wheel | Drag | D-pad / left stick up and down |
@@ -542,15 +542,15 @@ For RTL books, swipe and arrow directions mirror (future, §14).
 
 **Navigation semantics:** arriving via *advance* is "forward"; via *back* is "backward". A jump (chapter list, bookmark) to a page the reader has **not** seen behaves as forward; to a page they **have** seen behaves as backward (§6.3).
 
-**Menu:** Resume · Chapters · Bookmarks · Highlights · References · Search (post-MVP) · Settings · Title screen. A modal dialog opened with Esc or the Menu button in the status bar; Esc closes it. Leaving the book goes through Title screen, since Esc now opens the menu.
+**Menu:** Resume · Chapters · Bookmarks · Highlights · References · Search · Settings · Title screen. A modal dialog opened with Esc or the Menu button in the status bar; Esc closes it. Leaving the book goes through Title screen, since Esc now opens the menu.
 
 ### 13.1 Chapter index
 
 The chapter list works like the contents page of a paperback: all chapter titles are shown, read or not. The bundle carries it as `contents` (chapter entries with optional title overrides, plus headings); without it the runtime lists every chapter in order. It is **generated automatically** from the manuscript into `contents.toml`, which the author may then edit by hand (rename entries, hide entries, add part/section headings). Once the file exists, the CLI never overwrites it; `tome check` warns when it is out of sync with the manuscript (missing or unknown chapter IDs), and a `tome contents --regenerate` command (name provisional) rebuilds it on request.
 
-### 13.2 Search (post-MVP)
+### 13.2 Search
 
-Readers can search the text they've read, to find a half-remembered line. Search covers only chapters up to the **furthest chapter reached** (everything with the already-read flag), so it gates by the same rule as references (§5.1) and can never reveal later text. It is case- and accent-insensitive and matches whole words or phrases. Results are grouped by chapter, each with a short snippet around the match. Choosing one jumps to that page, with the jump rules from §13 (the page has been seen, so it behaves as backward), and briefly marks the match with a CSS Custom Highlight. Footnotes are searched too, and reference entries are not, since they have their own list. The runtime builds the index from the bundle's text when the book loads, or the first time Search opens on a long book, so the bundle doesn't grow. Opened from the menu, or with `/` or Ctrl+F.
+Readers can search the text they've read, to find a half-remembered line. Search covers only chapters up to the **furthest chapter reached** (everything with the already-read flag), so it gates by the same rule as references (§5.1) and can never reveal later text. It is case- and accent-insensitive and matches whole words or phrases. Curly quotes match straight ones, and footnote markers don't join the words around them. Results are grouped by chapter, each with a short snippet around the match, up to the first 200; Enter in the search box goes to the first. Choosing one jumps to that page, with the jump rules from §13 (the page has been seen, so it behaves as backward), and briefly marks the match with a CSS Custom Highlight (theme token `search-match-bg`). Footnotes are searched too, and a match in one opens it; reference entries are not, since they have their own list. The runtime builds the index from the bundle's text the first time Search opens, so the bundle doesn't grow. Opened from the menu, or with `/` or Ctrl+F, which open straight to Search (Back then closes the menu). The last query is kept while the book is open.
 
 ### 13.3 Time left (post-MVP)
 
@@ -596,7 +596,7 @@ Future: multi-language books, per-language references/aliases, RTL page directio
 
 ### 16.2 Later
 
-Read aloud with speech synthesis (§6.4) · spoiler-safe search (§13.2) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
+Read aloud with speech synthesis (§6.4) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
 
 Also: hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
 
