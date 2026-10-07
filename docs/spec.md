@@ -125,7 +125,7 @@ Base syntax is CommonMark with smart punctuation (`"…"` → “…”, `--` �
 | Ambient layer | `::ambient{rain}` (ID defaults to the name; `id=` to override) · `::ambient{stop rain}` · `::ambient{stop}` (all layers) |
 | Sound effect | `::sfx{thunder volume=0.6 delay=1.5}` |
 | Sound caption | `caption="a bell tolls, uneven"` on any `::music`, `::ambient` or `::sfx` cue (§6.7) |
-| Footnote (post-MVP) | `text[^ash]` with `[^ash]: The definition.` anywhere in the same chapter file |
+| Footnote | `text[^ash]` with `[^ash]: The definition.` anywhere in the same chapter file |
 | Reveal steps | `:::reveal{effect=typewriter duration=2 delay=0.3 easing=ease-in}` … `:::`; each block is a step unless `together`; `rest=wave` adds a resting effect |
 | Resting effect | `:fx[so kind]{wave speed=2}` inline, or a `:::fx{pulse}` block; options `speed`, `amplitude`, `scale`, `min-opacity`, `gradient=name` |
 | Special style | `:style[a coat like her own]{whisper}` or `:::style{handwriting}` |
@@ -138,7 +138,7 @@ A cue fires with the first block after it; cues after a chapter's last block att
 
 **Asset references.** A bare name like `harbour` is looked up in `assets/` (first in the folder for its kind: `audio/`, `images/` (and `video/`, for posters), `video/`, `fonts/`), and the extension may be omitted when exactly one file of the right kind matches. A path starting with `./` or `../` is relative to the file it's written in, so Markdown editors can preview images. Assets are copied into the bundle with content-hashed names.
 
-**Footnotes (post-MVP).** Standard Markdown footnotes (`[^label]` and `[^label]: …`, as pulldown-cmark parses them). A footnote's definition never appears in the page flow and doesn't count against pagination limits. The marker renders as a small superscript button; activating it (click, tap, or focus and the advance key) opens the footnote in a popover anchored to the marker, which closes with Esc, a click outside, or a page turn. Activating a marker never advances the page. Footnotes are numbered per chapter. The bundle carries each page's footnotes as rendered HTML beside its blocks, so references inside footnote text are matched like any other text.
+**Footnotes.** Standard Markdown footnotes (`[^label]` and `[^label]: …`, as pulldown-cmark parses them). A footnote's definition never appears in the page flow and doesn't count against pagination limits. The marker renders as a small superscript button; activating it (click, tap, or focus and the advance key) opens the footnote in a popover anchored to the marker, which closes with Esc, a click outside, or a page turn. Activating a marker never advances the page. Footnotes are numbered per chapter. The bundle carries each page's footnotes as rendered HTML beside its blocks, so references inside footnote text are matched like any other text.
 
 **Chapter front matter** (TOML between `+++` lines) may set `id`, `title`, `header_image`, `header_image_alt` and `pagination`. Without a `title`, a leading `# Heading` is the title.
 
@@ -172,6 +172,7 @@ Conversion from DOCX and other formats is out of scope; authors are pointed to *
 - Overlapping/ambiguous aliases between references (warning).
 - Missing alt text on any image (warning).
 - Music, ambience and sound-effect cues without a `caption` (warning, like missing alt text; §6.7).
+- Footnote markers without a definition, and definitions nothing refers to (warning).
 - `::music{stop}` / `::ambient{stop}` with nothing playing (warning).
 - Unknown directive names, effect names or style names.
 - Pages that exceed the limit because a single block is larger than the limit (warning).
@@ -182,7 +183,6 @@ Post-MVP, it should also catch:
 - References that no page links to, counting `:ref` (warning).
 - Cues that do nothing: music for the track already playing, an ambient layer started while it's already playing or stopped while it isn't, and the same sound effect cued twice on one step (warning).
 - Reveal steps with no visible content, such as a step holding only cues (warning).
-- Footnote markers without a definition, and definitions never referenced.
 - A build over the size budget (§4.5).
 
 ### 4.5 Asset processing (post-MVP)
@@ -596,7 +596,7 @@ Future: multi-language books, per-language references/aliases, RTL page directio
 
 ### 16.2 Later
 
-Read aloud with speech synthesis (§6.4) · footnotes (§4.2) · spoiler-safe search (§13.2) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
+Read aloud with speech synthesis (§6.4) · spoiler-safe search (§13.2) · time left in chapter (§13.3) · line spacing, text width, a legibility font and high contrast (§12) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
 
 Also: hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
 

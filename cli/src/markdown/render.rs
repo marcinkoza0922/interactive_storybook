@@ -5,8 +5,16 @@ use crate::diagnostics::Diagnostics;
 use pulldown_cmark::{CowStr, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 use std::path::Path;
 
+/// Options for rendering and counting one block. Blocks are parsed alone, away from the
+/// chapter's footnote definitions, so footnote markers are recognised without them.
 pub fn options() -> Options {
-    Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_STRIKETHROUGH
+    Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_OLD_FOOTNOTES
+}
+
+/// Options for splitting a chapter into blocks and for footnote definitions, in GitHub's
+/// footnote syntax: one definition per `[^label]:` line, with indented paragraphs after it.
+pub fn block_options() -> Options {
+    Options::ENABLE_SMART_PUNCTUATION | Options::ENABLE_STRIKETHROUGH | Options::ENABLE_FOOTNOTES
 }
 
 pub struct RenderContext<'a> {
@@ -14,6 +22,8 @@ pub struct RenderContext<'a> {
     pub diagnostics: &'a mut Diagnostics,
     pub file: &'a Path,
     pub line: usize,
+    /// The chapter's footnote labels, in order of first reference; a marker's number is its place here.
+    pub footnotes: &'a mut Vec<String>,
 }
 
 #[derive(Debug, Default)]
@@ -23,15 +33,34 @@ pub struct Rendered {
     pub image_only: bool,
     /// The text of a top-level `# Heading`, if that's what the block is.
     pub h1: Option<String>,
+    /// The label, if the block is a footnote definition (its HTML is the footnote's content).
+    pub footnote: Option<String>,
+    /// Labels of the footnotes the block refers to, in order.
+    pub footnote_refs: Vec<String>,
 }
 
 /// Render a single top-level block.
 pub fn render_block(markdown: &str, ctx: &mut RenderContext) -> Rendered {
     let mut events: Vec<Event> = Vec::new();
     let mut alt: Option<String> = None;
+    let mut footnote = None;
+    let mut footnote_refs = Vec::new();
 
-    for event in Parser::new_ext(markdown, options()) {
+    for event in Parser::new_ext(markdown, if is_footnote_definition(markdown) { block_options() } else { options() }) {
         match event {
+            Event::Start(Tag::FootnoteDefinition(label)) => footnote = Some(label.to_string()),
+            Event::End(TagEnd::FootnoteDefinition) => {}
+            Event::FootnoteReference(label) => {
+                let number = match ctx.footnotes.iter().position(|l| *l == *label) {
+                    Some(index) => index + 1,
+                    None => {
+                        ctx.footnotes.push(label.to_string());
+                        ctx.footnotes.len()
+                    }
+                };
+                footnote_refs.push(label.to_string());
+                events.push(Event::InlineHtml(CowStr::from(footnote_marker(number))));
+            }
             Event::Start(Tag::Image { link_type, dest_url, title, id }) => {
                 let resolved = match ctx.assets.resolve(&dest_url, ctx.file, AssetKind::Image) {
                     Ok(path) => path,
@@ -67,12 +96,23 @@ pub fn render_block(markdown: &str, ctx: &mut RenderContext) -> Rendered {
     };
 
     if let Some(figure) = figure(&events) {
-        return Rendered { html: figure, image_only: true, h1 };
+        return Rendered { html: figure, image_only: true, h1, footnote, footnote_refs };
     }
     let image_only = is_image_paragraph(&events);
     let mut html = String::new();
     pulldown_cmark::html::push_html(&mut html, events.into_iter());
-    Rendered { html: html.trim_end().to_string(), image_only, h1 }
+    Rendered { html: html.trim_end().to_string(), image_only, h1, footnote, footnote_refs }
+}
+
+fn is_footnote_definition(markdown: &str) -> bool {
+    markdown.starts_with("[^") && matches!(Parser::new_ext(markdown, block_options()).next(), Some(Event::Start(Tag::FootnoteDefinition(_))))
+}
+
+/// A footnote marker: a superscript button the runtime opens the footnote from.
+fn footnote_marker(number: usize) -> String {
+    format!(
+        r#"<sup class="tome-footnote-ref"><button type="button" class="tome-footnote-marker" data-tome-footnote="{number}" aria-haspopup="dialog" aria-label="Footnote {number}">{number}</button></sup>"#
+    )
 }
 
 /// A paragraph holding just one image.
@@ -163,7 +203,8 @@ mod tests {
         let mut assets = Assets::new(dir.path());
         let mut diagnostics = Diagnostics::default();
         let file = dir.path().join("manuscript/01.md");
-        let rendered = render_block(markdown, &mut RenderContext { assets: &mut assets, diagnostics: &mut diagnostics, file: &file, line: 3 });
+        let mut footnotes = vec!["earlier".to_string()];
+        let rendered = render_block(markdown, &mut RenderContext { assets: &mut assets, diagnostics: &mut diagnostics, file: &file, line: 3, footnotes: &mut footnotes });
         (rendered, diagnostics)
     }
 
@@ -189,6 +230,27 @@ mod tests {
         let messages: Vec<_> = diagnostics.items.iter().map(|d| d.message.as_str()).collect();
         assert!(messages.iter().any(|m| m.contains("no alt text")));
         assert!(messages.iter().any(|m| m.contains("can't find the image `nowhere.png`")));
+    }
+
+    #[test]
+    fn numbers_footnote_markers_per_chapter() {
+        let (rendered, _) = render("Ash[^ash] and more[^earlier].");
+        assert_eq!(rendered.footnote_refs, ["ash", "earlier"]);
+        assert!(rendered.html.contains(r#"data-tome-footnote="2" aria-haspopup="dialog" aria-label="Footnote 2">2</button></sup> and"#), "{}", rendered.html);
+        assert!(rendered.html.contains(r#"data-tome-footnote="1""#));
+        assert_eq!(rendered.footnote, None);
+    }
+
+    #[test]
+    fn renders_a_footnote_definition_as_its_content() {
+        let (rendered, _) = render("[^ash]: Burnt *wood*.\n\n    A second paragraph.");
+        assert_eq!(rendered.footnote.as_deref(), Some("ash"));
+        assert_eq!(rendered.html, "<p>Burnt <em>wood</em>.</p>\n<p>A second paragraph.</p>");
+    }
+
+    #[test]
+    fn counts_footnote_markers_as_no_text() {
+        assert_eq!(plain_text("Ash[^ash] fell.").0, "Ash fell.\n");
     }
 
     #[test]

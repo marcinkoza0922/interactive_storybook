@@ -67,6 +67,15 @@ export interface Page {
    * aliases against the text (and gating aliases by chapter) is the compiler's job.
    */
   references?: string[]
+  /** The footnotes this page's blocks refer to, in order of first reference. */
+  footnotes?: Footnote[]
+}
+
+export interface Footnote {
+  /** Numbered per chapter; markers in block HTML carry it as `data-tome-footnote`. */
+  number: number
+  /** Rendered HTML of the footnote's content. */
+  html: string
 }
 
 export interface Block {

@@ -1,7 +1,7 @@
 //! Splitting a chapter into pages, attaching cues to the blocks that follow them and
 //! numbering reveal steps within each page.
 
-use crate::bundle::{Block, Cue, ImageRef, Page, Reveal};
+use crate::bundle::{Block, Cue, Footnote, ImageRef, Page, Reveal};
 use crate::diagnostics::Diagnostics;
 use crate::markdown::chapter::{Item, PageLimits, ParsedBlock, ParsedChapter};
 use std::collections::HashMap;
@@ -115,6 +115,7 @@ impl Drafter<'_> {
                 forced_refs: vec![],
                 reveal,
                 line: 0,
+                footnotes: vec![],
             };
             last.blocks.push((anchor, self.cues));
         }
@@ -147,6 +148,7 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
             // Reveal steps are numbered per page, in the order their groups first appear.
             let mut steps: HashMap<usize, u32> = HashMap::new();
             let mut texts = Vec::new();
+            let mut footnotes: Vec<Footnote> = Vec::new();
             let blocks = draft
                 .blocks
                 .into_iter()
@@ -163,12 +165,19 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
                         }
                     });
                     texts.push((block.match_text, block.forced_refs));
+                    // A page carries the footnotes its blocks refer to, matched like the rest of its text.
+                    for footnote in block.footnotes.iter().filter_map(|label| chapter.footnotes.iter().find(|f| f.label == *label)) {
+                        if !footnotes.iter().any(|f| f.number == footnote.number) {
+                            footnotes.push(Footnote { number: footnote.number, html: footnote.html.clone() });
+                            texts.push((footnote.match_text.clone(), footnote.forced_refs.clone()));
+                        }
+                    }
                     let cues = cues.into_iter().map(|cue| align_narration(cue, &block.html, file, block.line, diagnostics)).collect();
                     Block { id: format!("{}-{next_block}", chapter.id), html: block.html, reveal, cues }
                 })
                 .collect();
             let paper = draft.paper.or_else(|| chapter_paper.clone());
-            PaginatedPage { page: Page { illustration: draft.illustration, blocks, references: vec![], paper }, texts }
+            PaginatedPage { page: Page { illustration: draft.illustration, blocks, references: vec![], paper, footnotes }, texts }
         })
         .collect()
 }
@@ -209,11 +218,12 @@ mod tests {
             forced_refs: vec![],
             reveal: group.map(|group| RevealSpec { effect: "fade".into(), duration_ms: None, delay_ms: None, easing: None, group }),
             line: 1,
+            footnotes: vec![],
         })
     }
 
     fn chapter(items: Vec<Item>) -> ParsedChapter {
-        ParsedChapter { id: "ch".into(), title: "Ch".into(), header_image: None, limits: PageLimits::default(), paper: None, items, content_hash: "h".into() }
+        ParsedChapter { id: "ch".into(), title: "Ch".into(), header_image: None, limits: PageLimits::default(), paper: None, items, footnotes: vec![], content_hash: "h".into() }
     }
 
     fn sfx() -> Item {
@@ -279,6 +289,31 @@ mod tests {
         let pages = paginate(chapter, PageLimits::default(), Path::new("ch.md"), &mut diagnostics);
         let papers: Vec<_> = pages.iter().map(|p| p.page.paper.as_deref()).collect();
         assert_eq!(papers, [Some("plain"), Some("letter"), Some("plain")]);
+    }
+
+    #[test]
+    fn carries_each_pages_footnotes_once_with_their_text() {
+        let footnote = |label: &str, number| crate::markdown::footnote::Footnote {
+            label: label.into(),
+            number,
+            html: format!("<p>{label}</p>"),
+            match_text: format!("{label} text"),
+            forced_refs: vec![],
+        };
+        let with_refs = |labels: &[&str]| match block(1, None) {
+            Item::Block(mut b) => {
+                b.footnotes = labels.iter().map(ToString::to_string).collect();
+                Item::Block(b)
+            }
+            other => other,
+        };
+        let mut chapter = chapter(vec![with_refs(&["ash", "bell"]), with_refs(&["ash"]), Item::PageBreak, with_refs(&["bell"])]);
+        chapter.footnotes = vec![footnote("ash", 1), footnote("bell", 2)];
+        let mut diagnostics = Diagnostics::default();
+        let pages = paginate(chapter, PageLimits::default(), Path::new("ch.md"), &mut diagnostics);
+        let numbers = |p: &PaginatedPage| p.page.footnotes.iter().map(|f| f.number).collect::<Vec<_>>();
+        assert_eq!((numbers(&pages[0]), numbers(&pages[1])), (vec![1, 2], vec![2]));
+        assert_eq!(pages[1].texts.last().unwrap().0, "bell text");
     }
 
     #[test]

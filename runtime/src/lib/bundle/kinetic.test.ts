@@ -21,6 +21,13 @@ describe('prepareKinetic', () => {
     expect(prepare(html, { step: 1, effect: 'fade' }).html).toBe(html)
   })
 
+  it('keeps footnote markers in the animated copy out of the tab order', () => {
+    const marker = '<sup><button type="button" data-tome-footnote="1">1</button></sup>'
+    const dom = parse(prepare(`<p data-tome-rest="wave">Ash${marker}</p>`).html)
+    expect(dom.querySelector('.tome-visual [data-tome-footnote]')!.getAttribute('tabindex')).toBe('-1')
+    expect(dom.querySelector('.tome-sr-only [data-tome-footnote]')!.hasAttribute('tabindex')).toBe(false)
+  })
+
   it('keeps an intact copy for screen readers and hides the animated one', () => {
     const html = '<p>“Oh, <span data-tome-rest="wave">wonderful</span>.”</p>'
     const dom = parse(prepare(html).html)

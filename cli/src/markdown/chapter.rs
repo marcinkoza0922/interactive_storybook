@@ -2,6 +2,7 @@
 //! blocks, cues, page breaks and illustration changes, ready for pagination.
 
 use super::directive::{self, Attrs, DirectiveLine, css_name, number, rest_attributes};
+use super::footnote::{Definition, Footnote, Footnotes};
 use super::render::{self, RenderContext, add_attributes};
 use crate::assets::{AssetKind, Assets, short_hash};
 use crate::bundle::{Cue, ImageRef};
@@ -63,6 +64,8 @@ pub struct ParsedBlock {
     pub forced_refs: Vec<String>,
     pub reveal: Option<RevealSpec>,
     pub line: usize,
+    /// Labels of the footnotes it refers to, in order.
+    pub footnotes: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -85,6 +88,8 @@ pub struct ParsedChapter {
     /// The paper for every page without its own, from the front matter.
     pub paper: Option<(String, usize)>,
     pub items: Vec<Item>,
+    /// In number order.
+    pub footnotes: Vec<Footnote>,
     pub content_hash: String,
 }
 
@@ -101,6 +106,7 @@ struct ChapterParser<'a> {
     stack: Vec<(Container, usize)>,
     items: Vec<Item>,
     next_group: usize,
+    footnotes: Footnotes,
 }
 
 const LEAF_DIRECTIVES: &str = "music, ambient, sfx, voice, illustration, paper, pagebreak";
@@ -109,12 +115,13 @@ pub const ENTRANCE_EFFECTS: &[&str] = &["fade", "slide", "typewriter"];
 
 pub fn parse_chapter(file: &Path, source: &str, assets: &mut Assets, diagnostics: &mut Diagnostics) -> Option<ParsedChapter> {
     let (front, body, body_line) = split_front_matter(file, source, diagnostics)?;
-    let mut parser = ChapterParser { file, assets, diagnostics, stack: Vec::new(), items: Vec::new(), next_group: 0 };
+    let mut parser = ChapterParser { file, assets, diagnostics, stack: Vec::new(), items: Vec::new(), next_group: 0, footnotes: Footnotes::default() };
 
     parser.body(body, body_line);
     parser.report_unclosed();
 
-    let ChapterParser { mut items, assets, diagnostics, .. } = parser;
+    let ChapterParser { mut items, assets, diagnostics, footnotes, .. } = parser;
+    let footnotes = footnotes.finish(file, diagnostics);
 
     // A leading `# Heading` is the chapter title, unless the front matter gives one.
     let mut title = front.title.clone();
@@ -161,6 +168,7 @@ pub fn parse_chapter(file: &Path, source: &str, assets: &mut Assets, diagnostics
         limits: front.pagination.unwrap_or_default(),
         paper: front.paper.map(|name| (name, 1)),
         items,
+        footnotes,
         content_hash: short_hash(source.as_bytes()),
     })
 }
@@ -493,9 +501,16 @@ impl ChapterParser<'_> {
 
         let rendered = render::render_block(
             &inline.render,
-            &mut RenderContext { assets: self.assets, diagnostics: self.diagnostics, file: self.file, line },
+            &mut RenderContext { assets: self.assets, diagnostics: self.diagnostics, file: self.file, line, footnotes: &mut self.footnotes.labels },
         );
         let (text, lines) = render::plain_text(&inline.matching);
+        self.footnotes.referenced(&rendered.footnote_refs, line);
+        // A footnote's definition is kept for the pages that refer to it, outside the page flow.
+        if let Some(label) = rendered.footnote {
+            let definition = Definition { html: rendered.html, match_text: text, forced_refs: inline.forced_refs, line };
+            self.footnotes.define(label, definition, self.file, self.diagnostics);
+            return;
+        }
 
         // Attributes from enclosing containers, innermost first.
         let mut attributes = String::new();
@@ -543,6 +558,7 @@ impl ChapterParser<'_> {
             forced_refs: inline.forced_refs,
             reveal,
             line,
+            footnotes: rendered.footnote_refs,
         }));
     }
 
@@ -597,7 +613,7 @@ fn top_level_blocks(text: &str) -> Vec<(usize, usize)> {
     let mut blocks = Vec::new();
     let mut depth = 0usize;
     let mut start = 0;
-    for (event, range) in Parser::new_ext(text, render::options()).into_offset_iter() {
+    for (event, range) in Parser::new_ext(text, render::block_options()).into_offset_iter() {
         match event {
             Event::Start(_) => {
                 if depth == 0 {

@@ -41,6 +41,19 @@ paper = "letter"                 # a paper from the theme, for every page
 Write in ordinary Markdown. Quotes and dashes become typographic (`"` → “ ”, `--` → –).
 A line of `***` is a scene break.
 
+Footnotes use standard Markdown. Mark the place with `[^label]` and write the footnote on
+its own line anywhere in the same chapter file; it stays out of the page and its length:
+
+```
+There were a hundred and twelve of them[^stairs].
+
+[^stairs]: The harbour office lists a hundred and eleven.
+```
+
+Readers see a small number and open the footnote by clicking or tapping it. Footnotes are
+numbered per chapter, and `tome check` reports a marker without a footnote, or a footnote
+nothing marks.
+
 ## Pages
 
 Pages fill up to the limits in `book.toml` and break between paragraphs. Force a break with:

@@ -588,7 +588,71 @@ body {
 }
 
 .tome-status > span:last-child,
-.tome-status-actions .tome-link-button {
+.tome-status-actions /* Footnote markers are small superscript buttons in the text; their footnotes open in a popover. */
+.tome-footnote-ref {
+  line-height: 0;
+}
+
+.tome-footnote-marker {
+  padding: 0 0.15em;
+  border: none;
+  border-radius: 0.2em;
+  background: none;
+  color: var(--tome-accent);
+  font: inherit;
+  font-family: var(--tome-font-ui);
+  font-size: 0.7em;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tome-footnote-marker:hover,
+.tome-footnote-marker[aria-expanded='true'] {
+  background: color-mix(in srgb, var(--tome-accent) 14%, transparent);
+}
+
+.tome-footnote {
+  position: fixed;
+  z-index: 9;
+  display: flex;
+  gap: 0.6rem;
+  box-sizing: border-box;
+  width: max-content;
+  max-width: min(24rem, calc(100vw - 1.5rem));
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--tome-rule);
+  border-radius: 0.5rem;
+  background: var(--tome-sidebar-bg);
+  color: var(--tome-text);
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 0.18);
+  font-family: var(--tome-font-body);
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+
+.tome-footnote:focus {
+  outline: none;
+}
+
+.tome-footnote-number {
+  flex: none;
+  color: var(--tome-accent);
+  font-family: var(--tome-font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.tome-footnote-body > :first-child {
+  margin-block-start: 0;
+}
+
+.tome-footnote-body > :last-child {
+  margin-block-end: 0;
+}
+
+.tome-link-button {
   flex: none;
   white-space: nowrap;
 }
@@ -651,7 +715,8 @@ body {
 
 .tome-link-button:focus-visible,
 .tome-icon-button:focus-visible,
-.tome-reference-link:focus-visible {
+.tome-reference-link:focus-visible,
+.tome-footnote-marker:focus-visible {
   outline: 2px solid var(--tome-accent);
   outline-offset: 2px;
 }

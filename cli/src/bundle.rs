@@ -67,6 +67,16 @@ pub struct Page {
     /// A named paper from the theme, for this page.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub paper: Option<String>,
+    /// The footnotes the page's blocks refer to, in order of first reference.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub footnotes: Vec<Footnote>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Footnote {
+    /// Numbered per chapter; the `data-tome-footnote` of its markers.
+    pub number: u32,
+    pub html: String,
 }
 
 #[derive(Debug, Clone, Serialize)]

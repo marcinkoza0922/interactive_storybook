@@ -1,16 +1,18 @@
 <script lang="ts">
   import { onDestroy, tick, untrack } from 'svelte'
   import { MediaQuery, SvelteSet } from 'svelte/reactivity'
-  import type { Bundle } from '../bundle/types'
+  import type { Bundle, Footnote } from '../bundle/types'
   import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
   import type { Captions } from '../audio/captions.svelte'
   import type { NarrationProgress } from '../audio/director'
   import { anchorSelection, highlightRanges, rangeIn, visibleTextRoot, type HighlightAnchor } from '../highlights/anchor'
+  import { visibleMarker } from '../reader/footnotes'
   import { advance, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
   import type { Progress } from '../state/progress.svelte'
   import { arriveByJump, isHighlightCurrent } from '../storage/save'
   import CaptionStrip from './CaptionStrip.svelte'
+  import FootnotePopover from './FootnotePopover.svelte'
   import Menu from './Menu.svelte'
   import PageView from './PageView.svelte'
   import ReferencePanel from './ReferencePanel.svelte'
@@ -64,6 +66,8 @@
   let hint = $state<string | null>(null)
   let hintTimer: ReturnType<typeof setTimeout> | undefined
   const HINT_MS = 2500
+  /** The open footnote, and the marker it opened from. */
+  let footnote = $state<{ footnote: Footnote; marker: HTMLElement } | null>(null)
   /** A text selection that can be turned into a highlight, and where to offer it. */
   let pendingHighlight = $state<{ anchor: HighlightAnchor; x: number; y: number } | null>(null)
 
@@ -135,6 +139,7 @@
     onchange(next, turned ? 'turn' : 'reveal')
 
     if (turned) {
+      closeFootnote(false)
       arrive(next)
       pendingHighlight = null
       progress.setPosition(next.position)
@@ -205,6 +210,32 @@
     const previous = back(bundle, reader)
     if (previous && !confirmTurn()) return
     go(previous)
+  }
+
+  /** Activating a marker opens its footnote, or closes it if it's open; it never turns the page. */
+  function toggleFootnote(marker: HTMLElement) {
+    const number = Number(marker.dataset.tomeFootnote)
+    const open = footnote?.footnote.number === number
+    closeFootnote(false)
+    const found = page.footnotes?.find((f) => f.number === number)
+    if (open || !found) return
+    marker.setAttribute('aria-expanded', 'true')
+    footnote = { footnote: found, marker }
+  }
+
+  function closeFootnote(returnFocus: boolean) {
+    if (!footnote) return
+    footnote.marker.removeAttribute('aria-expanded')
+    if (returnFocus) footnote.marker.focus()
+    footnote = null
+  }
+
+  /** A click outside an open footnote closes it. On the page, that's all the click does. */
+  function onwindowclick(event: MouseEvent) {
+    const target = event.target as Element
+    if (!footnote || target.closest('.tome-footnote, [data-tome-footnote]')) return
+    closeFootnote(false)
+    if (!target.closest('a, button, input, textarea, select')) event.stopPropagation()
   }
 
   /** Go to a page from the menu. Pages already read are shown fully revealed. */
@@ -320,7 +351,7 @@
   // Paused while the menu or references are open, and while narration is in progress, even
   // silently: a line's length is a good guide to how long its text takes to read.
   $effect(() => {
-    if (!progress.settings.auto_advance || menuOpen || panelOpen || narrating) return
+    if (!progress.settings.auto_advance || menuOpen || panelOpen || footnote || narrating) return
     void reader
     void entering.size
     void narrowView
@@ -380,7 +411,8 @@
         createHighlight()
         break
       case 'Escape':
-        if (panelOpen) setPanelOpen(false)
+        if (footnote) closeFootnote(true)
+        else if (panelOpen) setPanelOpen(false)
         else menuOpen = true
         break
       default:
@@ -391,6 +423,8 @@
 
   /** Click or tap: the left third goes back, the rest advances. */
   function onclick(event: MouseEvent) {
+    const marker = (event.target as Element).closest<HTMLElement>('[data-tome-footnote]')
+    if (marker) return toggleFootnote(marker)
     if ((event.target as Element).closest('a, button, .tome-status')) return
     // Don't turn the page when the reader is selecting text.
     if (!window.getSelection()?.isCollapsed) return
@@ -406,7 +440,7 @@
   }
 </script>
 
-<svelte:window {onkeydown} />
+<svelte:window {onkeydown} onclickcapture={onwindowclick} />
 <svelte:document {onselectionchange} />
 
 <div class="tome-reading" data-layout={layout} data-chapter={chapter.id} data-paper={page.paper}>
@@ -486,6 +520,12 @@
       </footer>
     </div>
   </div>
+
+  {#if footnote}
+    {#key footnote.footnote.number}
+      <FootnotePopover footnote={footnote.footnote} anchor={visibleMarker(footnote.marker)} />
+    {/key}
+  {/if}
 
   {#if turnNotice}
     <p class="tome-toast" role="status">Narration is still playing — press again to turn the page.</p>

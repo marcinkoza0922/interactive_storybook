@@ -93,6 +93,10 @@ export function prepareKinetic(block: Block): void {
   const counter = { index: 0 }
   for (const element of toSplit) splitWords(element, PER_CHARACTER.has(element.dataset.tomeRest!), counter)
 
+  // Footnote markers in the animated copy still open on a click, but keyboard focus goes to
+  // the intact copy's, which assistive technology can see.
+  for (const marker of template.content.querySelectorAll('[data-tome-footnote]')) marker.setAttribute('tabindex', '-1')
+
   let style = ''
   if (typewriter) {
     const count = splitTypewriter(template.content)

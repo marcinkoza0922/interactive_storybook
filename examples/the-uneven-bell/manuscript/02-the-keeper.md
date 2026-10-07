@@ -24,7 +24,7 @@ For the first time, :fx[something moved]{tremble} behind his eyes.
 ::pagebreak
 
 ::illustration{plate-bell alt="A bronze bell hanging in the dark above an empty chair"}
-He let her climb the stairs ahead of him. There were a hundred and twelve of them; she counted, because counting was the only thing in this town that seemed to hold still.
+He let her climb the stairs ahead of him. There were a hundred and twelve of them[^stairs]; she counted, because counting was the only thing in this town that seemed to hold still.
 
 :::reveal
 ::ambient{stop wind fade=0}
@@ -32,3 +32,5 @@ He let her climb the stairs ahead of him. There were a hundred and twelve of the
 ::sfx{bell caption="the bell, once"}
 At the top there was no lamp. There was only :fx[the bell]{gradient}, hanging in the dark, and beneath it a chair, and on the chair, folded neatly, :style[a coat exactly like her own]{whisper}.
 :::
+
+[^stairs]: The harbour office lists a hundred and eleven. Nobody in the town has ever offered to count them again.
