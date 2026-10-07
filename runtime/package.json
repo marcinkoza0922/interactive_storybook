@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:ai": "vite build --logLevel warn",
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "check:ai": "svelte-check --tsconfig ./tsconfig.app.json --output machine --threshold error && tsc -p tsconfig.node.json --pretty false",

@@ -21,7 +21,7 @@ debug: runtime
 	cargo build
 
 runtime: runtime/node_modules
-	cd runtime && npm run build
+	cd runtime && npm run --silent build:ai
 
 # Install packages on first use, or when the lockfile changes.
 runtime/node_modules: runtime/package-lock.json

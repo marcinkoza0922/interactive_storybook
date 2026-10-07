@@ -17,10 +17,11 @@ Print to the terminal only in user-facing CLI code, marked with `#[allow(clippy:
 
 ## Runtime commands
 
-Use npm, from `runtime/`. Use these instead of `npm run check` and `npm test`:
+Use npm, from `runtime/`. Use these instead of `npm run check`, `npm test` and `npm run build`:
 
 - Type-check: `npm run --silent check:ai`
 - Test: `npm run --silent test:ai [file]`
+- Build: `npm run --silent build:ai`
 
 Write Svelte 5 runes (`$state`, `$derived`, `$props`, `$effect`). Don't use `export let` or `$:`.
 
