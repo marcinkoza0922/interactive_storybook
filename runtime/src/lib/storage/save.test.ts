@@ -101,6 +101,7 @@ describe('storage round trip', () => {
     expect(save.settings.font_scale).toBe(1.3)
     expect(save.settings.audio.music).toEqual(defaults.audio.music)
     expect(save.bookmarks).toEqual([])
+    expect(save.pace).toEqual({ words: 0, ms: 0 })
   })
 
   it('turns high contrast on for older saves when the system asks for more contrast', async () => {

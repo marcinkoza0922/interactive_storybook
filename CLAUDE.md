@@ -1,6 +1,7 @@
 # Working in this repo
 
 `cli/` is the Rust CLI (`tome`); `runtime/` is the Svelte reader it embeds. The `Makefile` lists every build step.
+For now, breaking changes are acceptable.
 
 ## Rust commands
 

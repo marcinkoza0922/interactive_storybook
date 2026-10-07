@@ -1,5 +1,6 @@
 import type { Bundle } from '../bundle/types'
 import { arriveBackward, type Position, type ReaderState } from '../reader/navigation'
+import { emptyPace, type Pace } from '../reader/pace'
 import type { StorageAdapter } from './adapter'
 
 const SAVE_VERSION = 1
@@ -61,6 +62,8 @@ export interface Settings {
   captions: boolean
   /** Highlight the words (or paragraph) being narrated. */
   narration_highlight: boolean
+  /** Show the estimated time left in the chapter in the status bar. */
+  time_left: boolean
   auto_advance: boolean
   auto_interval_s: number
   /** Unlocks every reference and removes spoiler warnings. */
@@ -77,6 +80,8 @@ export interface SaveState {
   bookmarks: Bookmark[]
   highlights: Highlight[]
   settings: Settings
+  /** The reader's measured reading pace, for estimating time left. */
+  pace: Pace
 }
 
 export const FONT_SCALE_RANGE = { min: 0.8, max: 1.6, step: 0.1 }
@@ -95,6 +100,7 @@ export function defaultSettings(prefersReducedMotion: boolean, prefersMoreContra
     audio: { master: channel(1), music: channel(0.8), ambience: channel(0.8), sfx: channel(1), voice: channel(1) },
     captions: false,
     narration_highlight: true,
+    time_left: true,
     auto_advance: false,
     auto_interval_s: 8,
     already_read: false,
@@ -102,7 +108,15 @@ export function defaultSettings(prefersReducedMotion: boolean, prefersMoreContra
 }
 
 export function emptySave(settings: Settings): SaveState {
-  return { version: SAVE_VERSION, position: null, furthest_chapter_id: null, bookmarks: [], highlights: [], settings }
+  return {
+    version: SAVE_VERSION,
+    position: null,
+    furthest_chapter_id: null,
+    bookmarks: [],
+    highlights: [],
+    settings,
+    pace: emptyPace(),
+  }
 }
 
 function saveKey(bundle: Bundle): string {
@@ -127,6 +141,7 @@ export async function readSave(storage: StorageAdapter, bundle: Bundle, defaults
         ...save.settings,
         audio: { ...defaults.audio, ...save.settings?.audio },
       },
+      pace: save.pace ?? emptyPace(),
     }
   } catch {
     return emptySave(defaults)

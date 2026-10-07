@@ -62,6 +62,8 @@ pub struct Page {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub illustration: Option<Option<ImageRef>>,
     pub blocks: Vec<Block>,
+    /// Words of text on the page, footnotes aside, for estimating reading time.
+    pub words: usize,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub references: Vec<String>,
     /// A named paper from the theme, for this page.

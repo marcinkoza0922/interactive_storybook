@@ -55,6 +55,8 @@ export interface Chapter {
 
 export interface Page {
   blocks: Block[]
+  /** Words of text on the page, footnotes aside, for estimating reading time. */
+  words?: number
   /**
    * Sets the illustration track from this page on: an image, or null to clear it.
    * Absent: the previous page's track illustration carries over.

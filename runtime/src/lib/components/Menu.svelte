@@ -398,6 +398,14 @@
           <label class="tome-option">
             <input
               type="checkbox"
+              checked={settings.time_left}
+              onchange={(e) => progress.updateSettings({ time_left: e.currentTarget.checked })}
+            />
+            Show time left in the chapter
+          </label>
+          <label class="tome-option">
+            <input
+              type="checkbox"
               checked={settings.auto_advance}
               onchange={(e) => progress.updateSettings({ auto_advance: e.currentTarget.checked })}
             />

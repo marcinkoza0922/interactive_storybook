@@ -512,7 +512,7 @@ Authors set the defaults; readers can override **only settings that serve access
 - **Background video/GIF animation** follows the special-text/motion setting (falls back to a static poster frame).
 - **Music, ambience, sound effects:** separate volume/mute.
 - **Captions** for sound (§6.7) and **Read aloud** (post-MVP, §6.4).
-- **Time left** in the status bar on/off (post-MVP, §13.3).
+- **Time left** in the status bar on/off (§13.3).
 - **Auto mode** on/off and interval.
 - **Already read** flag.
 - **Reset reading progress** (with a confirmation): forgets the position, the furthest chapter (relocking references) and the already-read flag, and returns to the title screen. Bookmarks and highlights are deleted only if the reader ticks *Also delete bookmarks and highlights*; other settings stay. Jumping to a kept bookmark or highlight past the next unread chapter shows the same spoiler warning as the chapter list.
@@ -552,9 +552,9 @@ The chapter list works like the contents page of a paperback: all chapter titles
 
 Readers can search the text they've read, to find a half-remembered line. Search covers only chapters up to the **furthest chapter reached** (everything with the already-read flag), so it gates by the same rule as references (§5.1) and can never reveal later text. It is case- and accent-insensitive and matches whole words or phrases. Curly quotes match straight ones, and footnote markers don't join the words around them. Results are grouped by chapter, each with a short snippet around the match, up to the first 200; Enter in the search box goes to the first. Choosing one jumps to that page, with the jump rules from §13 (the page has been seen, so it behaves as backward), and briefly marks the match with a CSS Custom Highlight (theme token `search-match-bg`). Footnotes are searched too, and a match in one opens it; reference entries are not, since they have their own list. The runtime builds the index from the bundle's text the first time Search opens, so the bundle doesn't grow. Opened from the menu, or with `/` or Ctrl+F, which open straight to Search (Back then closes the menu). The last query is kept while the book is open.
 
-### 13.3 Time left (post-MVP)
+### 13.3 Time left
 
-The status bar can show how long the rest of the chapter will take: *About 9 minutes left in this chapter*. The bundle carries each page's word count. The estimate divides the remaining words by the reader's own pace, measured from time spent on fully revealed pages (ignoring very short and very long ones, such as a skipped page or a reader who walked away), and starts from 230 words per minute until there's enough data. Pace is stored with the reader's saved state. The display rounds to whole minutes, and says *Less than a minute* at the end. It's on by default and can be turned off in Settings → Reading.
+The status bar shows how long the rest of the chapter will take, compactly (*9 min left*, or *9 min* on very narrow screens) with the full sentence for screen readers and as a tooltip: *About 9 minutes left in this chapter*. The bundle carries each page's word count (`words`, footnotes aside). The estimate divides the words from the start of the current page to the chapter's end by the reader's own pace. Pace is measured from pages read through: arrived at forward, fully revealed and left by advancing, timed without the menu or references open or the window hidden, and not in auto mode, which sets its own pace. Pages read faster than 1000 or slower than 60 words per minute are ignored, as a skipped page or a reader who walked away. It starts from 230 words per minute, which stands in for the first 1000 words measured; past 5000 words, older reading fades so the pace follows the reader's current one. Pace is stored with the reader's saved state and survives a progress reset. The display rounds to whole minutes, and says *Less than a minute* at the end. It's on by default and can be turned off in Settings → Reading.
 
 ---
 
@@ -596,7 +596,7 @@ Future: multi-language books, per-language references/aliases, RTL page directio
 
 ### 16.2 Later
 
-Read aloud with speech synthesis (§6.4) · time left in chapter (§13.3) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
+Read aloud with speech synthesis (§6.4) · quote cards (§11.4) · loudness normalization, image optimization and a size report (§4.5) · stricter `tome check` (§4.4) · preview debug overlay, open in editor and follow edits (§4.6) · language server and VS Code extension (§4.7) · visual regression tests (§3.3).
 
 Also: hidden-depth content (in-world documents, annotations) · "previously on" recaps · codex/glossary screen with "new" markers · maps, timelines, family trees · illustration zoom/interaction · highlight export · sync server / Steam Cloud · installers and distro packages · Steam integration · free samples / partial builds · GUI authoring companion · bundled pandoc · macOS · native mobile apps · multi-language books · robust bookmark/highlight migration.
 

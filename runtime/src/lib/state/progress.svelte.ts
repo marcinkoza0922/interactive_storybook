@@ -1,5 +1,6 @@
 import type { Bundle } from '../bundle/types'
 import type { Position } from '../reader/navigation'
+import { withPage } from '../reader/pace'
 import type { StorageAdapter } from '../storage/adapter'
 import {
   pageRef,
@@ -53,6 +54,14 @@ export class Progress {
       this.save.bookmarks = []
       this.save.highlights = []
     }
+    this.persist()
+  }
+
+  /** Count a page read through toward the reader's pace. */
+  recordPage(words: number, ms: number): void {
+    const pace = withPage(this.save.pace, words, ms)
+    if (pace === this.save.pace) return
+    this.save.pace = pace
     this.persist()
   }
 

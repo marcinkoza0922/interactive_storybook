@@ -177,7 +177,8 @@ pub fn paginate(chapter: ParsedChapter, limits: PageLimits, file: &Path, diagnos
                 })
                 .collect();
             let paper = draft.paper.or_else(|| chapter_paper.clone());
-            PaginatedPage { page: Page { illustration: draft.illustration, blocks, references: vec![], paper, footnotes }, texts }
+            let page = Page { illustration: draft.illustration, blocks, words: draft.words, references: vec![], paper, footnotes };
+            PaginatedPage { page, texts }
         })
         .collect()
 }
@@ -245,6 +246,8 @@ mod tests {
         let (pages, diagnostics) = run(vec![block(40, None), block(50, None), block(30, None), block(10, None)], Some(100));
         assert_eq!(shape(&pages), [vec!["<p>40</p>", "<p>50</p>"], vec!["<p>30</p>", "<p>10</p>"]]);
         assert!(diagnostics.items.is_empty());
+        let words: Vec<_> = pages.iter().map(|p| p.page.words).collect();
+        assert_eq!(words, [90, 40]);
     }
 
     #[test]

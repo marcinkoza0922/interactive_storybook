@@ -632,7 +632,12 @@ body {
 }
 
 .tome-status > span:last-child,
-.tome-status-actions /* Footnote markers are small superscript buttons in the text; their footnotes open in a popover. */
+.tome-status-actions .tome-link-button {
+  flex: none;
+  white-space: nowrap;
+}
+
+/* Footnote markers are small superscript buttons in the text; their footnotes open in a popover. */
 .tome-footnote-ref {
   line-height: 0;
 }
@@ -1268,6 +1273,10 @@ body {
 
   .tome-status-actions .tome-link-button {
     padding-inline: 0.35rem;
+  }
+
+  .tome-time-left-word {
+    display: none;
   }
 }
 

@@ -7,6 +7,7 @@
   import type { NarrationProgress } from '../audio/director'
   import { anchorSelection, highlightRanges, rangeIn, visibleTextRoot, type HighlightAnchor } from '../highlights/anchor'
   import { visibleMarker } from '../reader/footnotes'
+  import { PageClock, minutesLeft, shortTimeLeft, timeLeftLabel } from '../reader/pace'
   import {
     advance,
     arriveBackward,
@@ -105,6 +106,9 @@
   const references = $derived(pageReferences(bundle, page, unlocked))
   const selected = $derived(selectedReference ? referenceEntry(bundle, selectedReference, unlocked) : null)
   const bookmarked = $derived(progress.bookmarkAt(reader.position) !== undefined)
+  const minutes = $derived(
+    progress.settings.time_left ? minutesLeft(bundle, reader.position, progress.save.pace) : null,
+  )
   const pageHighlights = $derived(
     progress.save.highlights.filter(
       (h) => h.chapter_id === chapter.id && h.page === reader.position.page && isHighlightCurrent(bundle, h),
@@ -116,6 +120,8 @@
    * (on narrow viewports) before fading in the text. Going back shows the text at once.
    */
   function arrive(state: ReaderState) {
+    clock.restart()
+    freshPage = state.direction === 'forward'
     clearTimeout(lingerTimer)
     textFadingIn = false
     if (!wide.current && state.direction === 'forward' && introducesIllustration(track, state.position)) {
@@ -140,6 +146,19 @@
     } else {
       showText()
     }
+  }
+
+  /**
+   * Reading pace comes from pages read through: arrived at forward and left by advancing, timed
+   * without the menu, references or a hidden window, and not in auto mode, which sets its own pace.
+   */
+  const clock = new PageClock()
+  let freshPage = false
+  let windowHidden = $state(false)
+  $effect(() => clock.setPaused(menuOpen || panelOpen || windowHidden))
+
+  function recordPace() {
+    if (freshPage && !progress.settings.auto_advance) progress.recordPage(page.words ?? 0, clock.elapsed())
   }
 
   arrive(untrack(() => initial))
@@ -220,6 +239,7 @@
     const next = advance(bundle, reader)
     const turns = next !== null && (next.position.chapter !== reader.position.chapter || next.position.page !== reader.position.page)
     if (turns && !confirmTurn()) return
+    if (turns) recordPace()
     go(next)
   }
 
@@ -516,7 +536,7 @@
 </script>
 
 <svelte:window {onkeydown} onclickcapture={onwindowclick} />
-<svelte:document {onselectionchange} />
+<svelte:document {onselectionchange} onvisibilitychange={() => (windowHidden = document.hidden)} />
 
 <div class="tome-reading" data-layout={layout} data-chapter={chapter.id} data-paper={page.paper}>
   <!-- Keyboard input is handled at the window level; clicking is a pointer convenience. -->
@@ -591,7 +611,16 @@
           </button>
           <button class="tome-link-button" onclick={() => openMenu()} aria-haspopup="dialog">Menu</button>
         </span>
-        <span>{reader.position.page + 1} / {chapter.pages.length}</span>
+        <span>
+          {#if minutes !== null}
+            <span class="tome-time-left" title={timeLeftLabel(minutes)}>
+              <span aria-hidden="true">{shortTimeLeft(minutes)}<span class="tome-time-left-word"> left</span></span>
+              <span class="tome-sr-only">{timeLeftLabel(minutes)}</span>
+            </span>
+            ·
+          {/if}
+          {reader.position.page + 1} / {chapter.pages.length}
+        </span>
       </footer>
     </div>
   </div>
