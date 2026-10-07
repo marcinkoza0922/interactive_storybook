@@ -10,11 +10,18 @@
   import ThemeLayer from './lib/components/ThemeLayer.svelte'
   import { GamepadPoller } from './lib/gamepad/poller'
   import { routeGamepadAction } from './lib/gamepad/router'
-  import { arriveBackward, type ReaderState } from './lib/reader/navigation'
+  import { arriveBackward, type Position, type ReaderState } from './lib/reader/navigation'
   import { applyAudioSettings, applyDocumentSettings } from './lib/settings/apply'
   import { Progress } from './lib/state/progress.svelte'
   import { LocalStorageAdapter } from './lib/storage/adapter'
-  import { defaultSettings, narrationAudible, readSave, resolvePosition, type PageRef } from './lib/storage/save'
+  import {
+    arriveByJump,
+    defaultSettings,
+    narrationAudible,
+    readSave,
+    resolvePosition,
+    type PageRef,
+  } from './lib/storage/save'
   import { effectiveTheme } from './lib/theme/theme'
 
   const storage = new LocalStorageAdapter()
@@ -102,8 +109,8 @@
     engine?.unlock()
     if (screen.kind !== 'landing' || interacted) return
     interacted = true
-    // Activating a button begins the book, whose own audio takes over.
-    const onButton = (event.target as Element | null)?.closest?.('button')
+    // Activating a button that begins the book leaves the music to the book's own audio.
+    const onButton = (event.target as Element | null)?.closest?.('button[data-begins]')
     const activates = !(event instanceof KeyboardEvent) || event.key === 'Enter' || event.key === ' '
     if (!(onButton && activates)) playLandingMusic()
   }
@@ -133,6 +140,13 @@
   function resume(bundle: Bundle, progress: Progress, position: PageRef) {
     // Resuming lands on an already-seen page: shown fully revealed, its audio restored at once.
     startReading(bundle, progress, arriveBackward(bundle, resolvePosition(bundle, position, { keepPageOnEdit: previewing })))
+  }
+
+  /** Start reading at a page chosen on the title screen. */
+  function jump(bundle: Bundle, progress: Progress, position: Position) {
+    const initial = arriveByJump(bundle, progress.save, position)
+    progress.setPosition(position)
+    startReading(bundle, progress, initial)
   }
 
   function exit(bundle: Bundle, progress: Progress) {
@@ -167,12 +181,14 @@
   {@const { bundle, progress } = screen}
   {@const position = progress.save.position}
   <Landing
-    book={bundle.book}
+    {bundle}
+    {progress}
     theme={theme?.landing ?? {}}
     {assetUrl}
     canContinue={position !== null}
     oncontinue={() => position && resume(bundle, progress, position)}
     onbegin={() => begin(bundle, progress)}
+    onjump={(position) => jump(bundle, progress, position)}
   />
 {:else}
   {@const { bundle, progress } = screen}

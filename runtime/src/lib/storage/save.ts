@@ -1,5 +1,5 @@
 import type { Bundle } from '../bundle/types'
-import type { Position } from '../reader/navigation'
+import { arriveBackward, type Position, type ReaderState } from '../reader/navigation'
 import type { StorageAdapter } from './adapter'
 
 const SAVE_VERSION = 1
@@ -164,9 +164,16 @@ export function narrationAudible(settings: Settings): boolean {
   return !master.muted && master.volume > 0 && !voice.muted && voice.volume > 0
 }
 
-/** Whether jumping to a chapter would unlock references the reader hasn't reached. */
-export function jumpRevealsSpoilers(bundle: Bundle, save: SaveState, chapter: number): boolean {
-  return !save.settings.already_read && chapter > furthestIndex(bundle, save) + 1
+/** A chapter the reader hasn't reached: jumping there unlocks references that may spoil it. */
+export function chapterLocked(bundle: Bundle, save: SaveState, chapter: number): boolean {
+  return chapter > unlockedChapter(bundle, save)
+}
+
+/** Jumping to a page: one in a chapter already reached is shown fully revealed. */
+export function arriveByJump(bundle: Bundle, save: SaveState, position: Position): ReaderState {
+  return position.chapter <= furthestIndex(bundle, save)
+    ? arriveBackward(bundle, position)
+    : { position, revealed: 0, direction: 'forward' }
 }
 
 /** Highlights whose text still matches; the others stay saved but aren't shown. */

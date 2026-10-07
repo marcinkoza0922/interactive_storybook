@@ -126,6 +126,20 @@ body {
   min-width: 0;
 }
 
+/* Bookmarks and highlights: smaller than the main buttons, side by side. */
+.tome-landing-shortcuts {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.tome-landing-shortcut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+}
+
 .tome-button {
   min-width: 14rem;
   padding: 0.65rem 1.25rem;
@@ -888,6 +902,26 @@ body {
 .tome-menu-item:hover,
 .tome-menu-item[aria-current='true'] {
   color: var(--tome-accent);
+}
+
+.tome-menu-item.tome-menu-locked {
+  align-items: center;
+  color: var(--tome-text-muted);
+}
+
+.tome-menu-item.tome-menu-locked:hover,
+.tome-menu-item.tome-menu-locked:focus-visible {
+  color: var(--tome-text);
+}
+
+/* The lock opens when pointed at or focused: the chapter can still be chosen. */
+.tome-lock-open,
+.tome-menu-locked:is(:hover, :focus-visible) .tome-lock-closed {
+  display: none;
+}
+
+.tome-menu-locked:is(:hover, :focus-visible) .tome-lock-open {
+  display: inline;
 }
 
 .tome-menu-item[aria-current='true']::after {

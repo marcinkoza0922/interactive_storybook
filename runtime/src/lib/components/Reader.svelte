@@ -5,10 +5,10 @@
   import { DEFAULT_LINGER_MS, introducesIllustration, trackStates } from '../illustrations/track'
   import type { NarrationProgress } from '../audio/director'
   import { anchorSelection, highlightRanges, rangeIn, visibleTextRoot, type HighlightAnchor } from '../highlights/anchor'
-  import { advance, arriveBackward, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
+  import { advance, back, pageAt, type Position, type ReaderState } from '../reader/navigation'
   import { pageReferences, referenceEntry } from '../references/gating'
   import type { Progress } from '../state/progress.svelte'
-  import { furthestIndex, isHighlightCurrent } from '../storage/save'
+  import { arriveByJump, isHighlightCurrent } from '../storage/save'
   import Menu from './Menu.svelte'
   import PageView from './PageView.svelte'
   import ReferencePanel from './ReferencePanel.svelte'
@@ -197,8 +197,7 @@
   function jump(position: Position) {
     menuOpen = false
     if (position.chapter === reader.position.chapter && position.page === reader.position.page) return
-    const seen = position.chapter <= furthestIndex(bundle, progress.save)
-    go(seen ? arriveBackward(bundle, position) : { position, revealed: 0, direction: 'forward' })
+    go(arriveByJump(bundle, progress.save, position))
   }
 
   function toggleBookmark() {

@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { Bundle } from '../bundle/types'
 import { MemoryStorageAdapter } from './adapter'
 import {
+  chapterLocked,
   defaultSettings,
   emptySave,
-  jumpRevealsSpoilers,
   readSave,
   resolvePosition,
   unlockedChapter,
@@ -58,17 +58,23 @@ describe('withPosition', () => {
 })
 
 describe('spoiler gating', () => {
-  it('warns only when jumping past the next unread chapter', () => {
+  it('locks the chapters past the furthest one reached', () => {
     const save = reached(1)
-    expect(jumpRevealsSpoilers(bundle, save, 0)).toBe(false)
-    expect(jumpRevealsSpoilers(bundle, save, 2)).toBe(false)
-    expect(jumpRevealsSpoilers(bundle, save, 3)).toBe(true)
+    expect(chapterLocked(bundle, save, 0)).toBe(false)
+    expect(chapterLocked(bundle, save, 1)).toBe(false)
+    expect(chapterLocked(bundle, save, 2)).toBe(true)
+  })
+
+  it('leaves the first chapter unlocked before reading starts', () => {
+    const save = emptySave(defaults)
+    expect(chapterLocked(bundle, save, 0)).toBe(false)
+    expect(chapterLocked(bundle, save, 1)).toBe(true)
   })
 
   it('unlocks everything, without warnings, once the book has been read', () => {
     const save = { ...reached(0), settings: { ...defaults, already_read: true } }
     expect(unlockedChapter(bundle, save)).toBe(3)
-    expect(jumpRevealsSpoilers(bundle, save, 3)).toBe(false)
+    expect(chapterLocked(bundle, save, 3)).toBe(false)
     expect(unlockedChapter(bundle, reached(1))).toBe(1)
   })
 })

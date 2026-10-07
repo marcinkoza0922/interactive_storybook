@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick } from 'svelte'
+  import { tick, untrack } from 'svelte'
   import type { Bundle } from '../bundle/types'
   import { desktop } from '../desktop.svelte'
   import type { Position } from '../reader/navigation'
@@ -7,36 +7,41 @@
   import type { Progress } from '../state/progress.svelte'
   import {
     FONT_SCALE_RANGE,
+    chapterLocked,
     isHighlightCurrent,
-    jumpRevealsSpoilers,
     resolvePosition,
     type BodyFont,
     type PageRef,
   } from '../storage/save'
 
+  type List = 'chapters' | 'bookmarks' | 'highlights'
+
   interface Props {
     bundle: Bundle
     progress: Progress
-    position: Position
+    /** The page being read; null on the title screen. */
+    position: Position | null
+    /** Open straight to one list, which Back then closes; the main view never shows. */
+    start?: List
     onclose: () => void
     /** Go to a page; `seen` pages are shown fully revealed. */
     onjump: (position: Position) => void
-    onreferences: () => void
-    ontitle: () => void
+    /** These three are reached only through the main view. */
+    onreferences?: () => void
+    ontitle?: () => void
     /** Progress was reset: leave the book for the title screen. */
-    onreset: () => void
+    onreset?: () => void
   }
 
-  let { bundle, progress, position, onclose, onjump, onreferences, ontitle, onreset }: Props = $props()
+  let { bundle, progress, position, start, onclose, onjump, onreferences, ontitle, onreset }: Props = $props()
 
-  type List = 'chapters' | 'bookmarks' | 'highlights'
   type View = 'main' | List | 'settings' | 'reset' | { confirmJump: Position; from: List }
   let deleteAnnotations = $state(false)
-  let view = $state<View>('main')
+  let view = $state<View>(untrack(() => start) ?? 'main')
   let dialog: HTMLDialogElement
 
   const settings = $derived(progress.settings)
-  const currentBookmark = $derived(progress.bookmarkAt(position))
+  const currentBookmark = $derived(position && progress.bookmarkAt(position))
   const highlights = $derived(progress.save.highlights.filter((h) => isHighlightCurrent(bundle, h)))
   const contents = $derived(
     bundle.contents ?? bundle.chapters.map((c) => ({ kind: 'chapter' as const, id: c.id, title: undefined })),
@@ -60,21 +65,22 @@
     return `${chapterTitle(ref.chapter_id)} · page ${ref.page + 1}`
   }
 
-  /** Go to a page, first warning if that would unlock references the reader hasn't reached. */
+  /** Go to a page, first warning if it's in a chapter the reader hasn't reached. */
   function jumpTo(target: Position, from: List) {
-    if (jumpRevealsSpoilers(bundle, progress.save, target.chapter)) show({ confirmJump: target, from })
+    if (chapterLocked(bundle, progress.save, target.chapter)) show({ confirmJump: target, from })
     else onjump(target)
   }
 
   function reset() {
     progress.resetProgress({ annotations: deleteAnnotations })
-    onreset()
+    onreset?.()
   }
 
-  /** Where Back leads from each view. */
-  function parent(of: View): View {
-    if (typeof of === 'object') return of.from
-    return of === 'reset' ? 'settings' : 'main'
+  /** Back leads to the parent view, or closes a menu opened straight to this one. */
+  function back() {
+    if (view === start) dialog.close()
+    else if (typeof view === 'object') show(view.from)
+    else show(view === 'reset' ? 'settings' : 'main')
   }
 
   function setVolume(channel: (typeof AUDIO_CHANNELS)[number]['channel'], volume: number) {
@@ -125,7 +131,7 @@
         {/if}
       </nav>
     {:else}
-      <button class="tome-link-button tome-menu-back" onclick={() => show(parent(view))}>
+      <button class="tome-link-button tome-menu-back" onclick={back}>
         ← Back
       </button>
 
@@ -138,13 +144,24 @@
             {:else}
               {@const chapter = bundle.chapters.findIndex((c) => c.id === entry.id)}
               {#if chapter !== -1}
+                {@const locked = chapterLocked(bundle, progress.save, chapter)}
                 <li>
                   <button
                     class="tome-menu-item"
-                    aria-current={chapter === position.chapter ? 'true' : undefined}
+                    class:tome-menu-locked={locked}
+                    aria-current={chapter === position?.chapter ? 'true' : undefined}
                     onclick={() => jumpTo({ chapter, page: 0 }, 'chapters')}
                   >
                     {chapterTitle(entry.id, entry.title)}
+                    {#if locked}
+                      <span class="tome-sr-only">(not reached yet)</span>
+                      <!-- Opens on hover and focus: the chapter can still be chosen. -->
+                      <svg class="tome-menu-icon tome-lock" viewBox="0 0 24 24" aria-hidden="true">
+                        <rect x="5" y="11" width="14" height="10" rx="1.5" />
+                        <path class="tome-lock-closed" d="M8 11V7a4 4 0 0 1 8 0v4" />
+                        <path class="tome-lock-open" d="M8 11V7a4 4 0 0 1 7.8-1.3" />
+                      </svg>
+                    {/if}
                   </button>
                 </li>
               {/if}
@@ -157,8 +174,8 @@
         {@const target = bundle.chapters[destination.chapter]}
         <h2 class="tome-menu-heading">Skip ahead?</h2>
         <p>
-          Jumping to <strong>{target.title}</strong> will unlock references up to that chapter, which may contain
-          spoilers.
+          You haven't reached <strong>{target.title}</strong> yet. Jumping there will unlock references up to that
+          chapter, which may contain spoilers.
         </p>
         <div class="tome-menu-actions">
           <button class="tome-button tome-button-primary" onclick={() => onjump(destination)}>
@@ -182,9 +199,11 @@
         </div>
       {:else if view === 'bookmarks'}
         <h2 class="tome-menu-heading">Bookmarks</h2>
-        <button class="tome-button" onclick={() => progress.toggleBookmark(position)}>
-          {currentBookmark ? 'Remove bookmark from this page' : 'Bookmark this page'}
-        </button>
+        {#if position}
+          <button class="tome-button" onclick={() => progress.toggleBookmark(position)}>
+            {currentBookmark ? 'Remove bookmark from this page' : 'Bookmark this page'}
+          </button>
+        {/if}
         {#if progress.save.bookmarks.length === 0}
           <p class="tome-menu-empty">No bookmarks yet. Use the bookmark button below the page, or press B, to add one.</p>
         {:else}
