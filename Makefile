@@ -25,7 +25,7 @@ runtime: runtime/node_modules
 
 # Install packages on first use, or when the lockfile changes.
 runtime/node_modules: runtime/package-lock.json
-	cd runtime && npm ci
+	cd runtime && npm ci --silent
 	@touch $@
 
 test: runtime

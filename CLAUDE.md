@@ -15,6 +15,15 @@ A post-edit hook (`.claude/settings.json`) runs `cargo check` after each `.rs` e
 
 Print to the terminal only in user-facing CLI code, marked with `#[allow(clippy::print_stdout, clippy::print_stderr, reason = "...")]`. Keep functions under 60 lines (`too_many_lines`) and files under about 400 (`make sizes`).
 
+## Runtime commands
+
+Use npm, from `runtime/`. Use these instead of `npm run check` and `npm test`:
+
+- Type-check: `npm run --silent check:ai`
+- Test: `npm run --silent test:ai [file]`
+
+Write Svelte 5 runes (`$state`, `$derived`, `$props`, `$effect`). Don't use `export let` or `$:`.
+
 ## Don't read
 
-`Cargo.lock`, `runtime/package-lock.json`, `target/`, `runtime/dist/`, `runtime/node_modules/`, or binary assets under `examples/` and `cli/templates/`.
+`Cargo.lock`, `runtime/package-lock.json`, `target/`, `runtime/dist/`, `runtime/node_modules/`, binary assets under `examples/` and `cli/templates/`, or the SVGs under `examples/*/assets/images/`.
